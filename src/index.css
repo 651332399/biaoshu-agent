@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+:root {
+  --accent: #1e40af; /* Deep royal corporate blue */
+  --accent-soft: #eff6ff; /* Soft sky blue bg */
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --bad: #be123c; /* Rose/Crimson for hard compliance warnings */
+}
+
+body {
+  background-color: #f8fafc;
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom fade-in and scale-in animations for a seamless reactive UI look */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Chapter Highlight Animation */
+@keyframes highlightPulse {
+  0% {
+    outline: 3px solid #3b82f6;
+    outline-offset: 2px;
+    background-color: #eff6ff;
+  }
+  50% {
+    outline: 3px solid #1d4ed8;
+    outline-offset: 2px;
+    background-color: #eff6ff;
+  }
+  100% {
+    outline: 3px solid transparent;
+    outline-offset: 0px;
+    background-color: var(--surface);
+  }
+}
+
+.chapter-highlight {
+  animation: highlightPulse 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

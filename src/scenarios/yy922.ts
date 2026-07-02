@@ -1,0 +1,208 @@
+import type { Scenario } from '../engine/types';
+
+export const yy922: Scenario = {
+  id: 'yy922',
+  meta: {
+    项目名: '922 医院计量检测服务项目 (第三次竞争性谈判)',
+    采购人: '中国人民解放军第 922 医院',
+    采购方式: '军队服务类竞争性谈判',
+    评审办法: '经评审的最低投标价法',
+    限价: 167600,
+    报价: 166120,
+    报价利用率: '99.12%',
+    保证金: 3200,
+    服务周期: '2 年 (按合同约定分期服务)',
+  },
+  strategy: {
+    method: 'lowest-price',
+    基调: '经评审最低价法 → 商务和技术「只求过合规关」，价格直接决定能否成交，分值在此无意义。任何不合规项直接导致出局',
+    报价基调: '低成本压线报价 (低限价 0.88%，166,120 元，在确保合规的前提下保留议价空间)',
+  },
+  volumes: [
+    {
+      id: 'vol.price',
+      名称: '第一册 价格文件',
+      单独密封: true,
+      chapters: [
+        { id: 'chap.p1', 标题: '报价一览表 (须单独盖章且放于独立价格封套)', 类型: '填空区' },
+        { id: 'chap.p2', 标题: '分项报价明细表', 类型: '填空区' },
+      ],
+    },
+    {
+      id: 'vol.bt',
+      名称: '第二册 商务及技术文件',
+      单独密封: false,
+      chapters: [
+        { id: 'chap.b1', 标题: '符合性及技术偏离索引表', 类型: '填空区' },
+        { id: 'chap.b2', 标题: '商务及技术偏离正文表', 类型: '填空区' },
+        { id: 'chap.b3', 标题: '检测服务实施方案与应急管理', 类型: '自撰区' },
+      ],
+    },
+    {
+      id: 'vol.qual',
+      名称: '第三册 资格证明文件',
+      单独密封: true,
+      chapters: [
+        { id: 'chap.q1', 标题: '独立资格证明文件 (营业执照与社保等证明)', 类型: '填空区' },
+        { id: 'chap.q2', 标题: '安全保密专项承诺书', 类型: '填空区' },
+      ],
+    },
+  ],
+  requirements: [
+    { id: 'req.time', 文本: '交付时限：接到通知后 7 日内响应现场检测，30 天内完成检测，10 个工作日内出具证书', 标识: '★' },
+    { id: 'req.secret', 文本: '严格保密，所有检测人员必须提供在保社保证明（不接受代缴协议）', 标识: '★' },
+    { id: 'req.pay', 文本: '付款条款：每年完成检测并出证后，凭发票及检测审计报告支付当年合同款的 50%', 标识: '★' },
+    { id: 'req.idx', 文本: '资格审查表与符合性审查索引表必须逐项列明册和页码，未填列视为废标', 标识: '★' },
+  ],
+  mapping: [
+    { id: 'map.time', requirementId: 'req.time', volumeId: 'vol.bt', chapterId: 'chap.b2', 证据类型: '技术偏离表' },
+    { id: 'map.idx', requirementId: 'req.idx', volumeId: 'vol.bt', chapterId: 'chap.b1', 证据类型: '索引表' },
+    { id: 'map.qual', requirementId: 'req.secret', volumeId: 'vol.qual', chapterId: 'chap.q1', 证据类型: '在保人员社保凭证' },
+  ],
+  materials: [
+    { id: 'mat.cma922', category: 'qual', 名称: 'CMA 计量认证资质证书 (包含医疗强检及常规校准能力)', 命中: true },
+    { id: 'mat.soc', category: 'people', 名称: '项目团队在保社保证明 (吴建刚/颜园/沈焕章等对公申报底单)', 命中: true },
+    { id: 'mat.perf922', category: 'record', 名称: '军队体系医疗机构及公立大中型医院历史校准业绩合同 (第五医学中心/武警总队等)', 命中: true },
+    { id: 'mat.tpl', category: 'template', 名称: '保密承诺书、安全检测与突发停电应急救援预案标准模板', 命中: true },
+  ],
+  blocks: [
+    {
+      id: 'blk.idx',
+      chapterId: 'chap.b1',
+      render: 'table',
+      标题: '商务技术资格符合性逆向检索索引表 (防漏填漏指向废标门槛)',
+      table: {
+        headers: ['招标文件审查项', '投标文件对应册/页码', '是否满足要求'],
+        rows: [
+          ['具有独立法人资格且具备 CMA 资质', '第三册《资格证明文件》 第 3–4 页', '满足 (完全响应)'],
+          ['技术团队人员社保底账 (对公代缴不认可)', '第三册《资格证明文件》 第 11–13 页', '满足 (提供公立社保缴存证明)'],
+          ['★ 7 日内到达现场，30 天内完成检测', '第二册《商务及技术文件》 第 8 页 (技术偏离表)', '满足 (完全响应)'],
+          ['★ 签署安全保密专项承诺书', '第三册《资格证明文件》 第 18 页', '满足 (已附原件签章)'],
+        ],
+      },
+    },
+    {
+      id: 'blk.dev922',
+      chapterId: 'chap.b2',
+      render: 'table',
+      标题: '商务及技术条款偏离表 (改写条款避免照抄被退单)',
+      table: {
+        headers: ['招标文件要求', '投标文件响应', '偏离方向'],
+        rows: [
+          ['★ 接到通知后 7 日内到达现场检测', '我司承诺接到加急通知后 1 个工作日内派驻，常规检测 3 天内到达现场', '无偏离 (优于招标)'],
+          ['★ 检测完成后 10 个工作日内出具计量证书', '我司承诺自检测合格之日起，5 个工作日内出具国家认可校准证书', '无偏离 (优于招标)'],
+        ],
+      },
+    },
+    {
+      id: 'blk.price922',
+      chapterId: 'chap.p1',
+      render: 'form',
+      标题: '第一册 价格文件 · 投标报价一览表 (高能合规敏感区)',
+      form: [
+        { label: '谈判报价总额', value: '¥166,120.00' },
+        { label: '其中：第一年检测及报告费用', value: '¥83,060.00' },
+        { label: '其中：第二年检测及报告费用', value: '¥83,060.00' },
+        { label: '报价占最高限价百分比 (利用率)', value: '99.12%' },
+        { label: '履约保证金保障方式', value: '我司承诺中标后 5 个工作日内，以银行保函形式缴纳合同金额 5% 的履约保证金' },
+      ],
+    },
+    {
+      id: 'blk.plan922',
+      chapterId: 'chap.b3',
+      render: 'prose',
+      标题: '检测服务实施方案 (军队医院合规导向版)',
+      prose: '针对 922 医院计量检测，我司严格遵循军队采购及军队医疗计量规范实施高内聚、硬合规保障：全过程建立涉密文件闭环流转，所有检测人员均为正式缴纳对公社保的在保计量师，拒绝代缴社保。商务和技术偏离全部实现「100% 优于招标」，以确保审查专家在符合性审查中获得全优评级。价格部分单独打包封装，彻底隔绝价格敏感信息在外分册的外露，保障价格分册密封绝对合规。',
+    },
+  ],
+  redlines: [
+    { id: 'rl.idx922', 项: '四张索引表与偏离表完备度 (未填 = 直接废标)', 结果: 'pass', 说明: '已完整列出四个索引大类及页码 (符合)' },
+    { id: 'rl.copy922', 项: '技术响应避免照抄 (照抄 = 无效投标)', 结果: 'pass', 说明: '已针对响应周期进行 1 天内/5 个工作日的个性化改写 (符合)' },
+    { id: 'rl.seal', 项: '价格密封与报价信息隔离 (外露 = 废标红线)', 结果: 'pass', 说明: '第一册独立密封，第二/三册不含任何价格字样 (符合)' },
+    { id: 'rl.overlimit', 项: '报价不超过限价', 结果: 'pass', 说明: '166,120 元 ≤ 限价 167,600 元 (符合)' },
+    { id: 'rl.pressure', 项: '贴底价格恶性竞争与压线风险', 结果: 'pass', 说明: '利用率达 99.12%，贴近限价，经评审最低价法下容错率极低' },
+  ],
+  pricing: {
+    lines: [
+      { 项目: '医用设备强制检定与辅助检测服务 (年度)', 数量: 2, 单价: 52000, 小计: 104000 },
+      { 项目: '影像与临床强检专线仪器溯源出证及保密申报 (年)', 数量: 2, 单价: 31060, 小计: 62120 },
+    ],
+    限价: 167600,
+    报价: 166120,
+    利用率: '99.12%',
+    压线告警: '当前报价 166,120 元利用率达 99.12%，贴限价过高。在「经评审最低价法」下，若有竞争对手采取 90%-95% 限价下调策略，我司将面临严重丢标风险。',
+  },
+  steps: [
+    { id: 'y1', stage: 1, kind: 'log', duration: 1000, log: '解析 922 医院谈判文件：3 册结构 · ★交付时限/保密/付款 · 经评审最低价法' },
+    { id: 'y2', stage: 2, kind: 'checkpoint', duration: 0, checkpointTitle: '最低价策略研判', checkpointBody: '军队第 922 医院采购采用「最低价法」。技术商务只要过「合格/不合格」关，得分毫无用处。报价是决定成败的唯一胜负手。AI 建议：严守各项 ★ 级条款，全力保障商务不负偏离，报价进行微调探底。' },
+    { id: 'y3', stage: 3, kind: 'growTree', duration: 500, treeVolumeId: 'vol.price', log: '根据三册大纲：长出「第一册 价格文件」(单独盖章密封要求)' },
+    { id: 'y4', stage: 3, kind: 'growTree', duration: 500, treeVolumeId: 'vol.bt', log: '长出「第二册 商务及技术文件」(除价格信息外的全部技术篇幅)' },
+    { id: 'y5', stage: 3, kind: 'growTree', duration: 500, treeVolumeId: 'vol.qual', log: '长出「第三册 资格证明文件」(营业执照、保密承诺与社保明细)' },
+    { id: 'y6', stage: 5, kind: 'matchMaterial', duration: 900, log: '库检索拟派项目负责人：吴建刚 · 一级注册计量师证已核对 ✅', focus: { material: 'mat.soc', drawer: 'people', mapRow: 'map.qual' } },
+    {
+      id: 'y_supp_social',
+      stage: 5,
+      kind: 'supplement',
+      duration: 0,
+      supplementType: 'social',
+      supplementTitle: '★ 缺失红线材料：拟派项目团队在册社保证明',
+      supplementBody: '解放军第 922 医院谈判文件规定：拟任的所有驻场检测专家均须具备正式劳动合同及连续足额对公社保。Agent 在本地库中发现技术负责人的本年度社保对公回账截图缺失，请人工提供以供多模态指印防伪识别。',
+    },
+    { id: 'y7', stage: 6, kind: 'genBlock', duration: 1000, blockId: 'blk.idx', focus: { docBlock: 'blk.idx', chapter: 'chap.b1' } },
+    { id: 'y8', stage: 6, kind: 'genBlock', duration: 1000, blockId: 'blk.dev922', focus: { docBlock: 'blk.dev922', chapter: 'chap.b2' } },
+    { id: 'y9', stage: 6, kind: 'genBlock', duration: 1300, blockId: 'blk.plan922', focus: { docBlock: 'blk.plan922', chapter: 'chap.b3' } },
+    {
+      id: 'y_supp_tax',
+      stage: 5,
+      kind: 'supplement',
+      duration: 0,
+      supplementType: 'tax',
+      supplementTitle: '⚠️ 缺失合规佐证：企业近半年依法纳税电子缴存凭证',
+      supplementBody: '第三册《资格证明文件》合规性审查需要提供海淀区税务局开具的正常电子完税缴纳回执。Agent 在本地资料库中未检索到对应季度电子凭证，请一键提供纳税截图以供多模态自动校验。',
+    },
+    {
+      id: 'y_supp_pricing',
+      stage: 7,
+      kind: 'supplement',
+      duration: 0,
+      supplementType: 'pricing',
+      supplementTitle: '⚠️ 缺失关键文件：价格谈判分项报价估算试算明细底单',
+      supplementBody: '项目价格文件需要进行各计量检测服务模块分项小计勾稽校验。Agent 需要调取您线下计算的精算试算底单，以精确锁定最终谈判底牌价格。请人工补充。',
+    },
+    { id: 'y10', stage: 7, kind: 'pricing', duration: 900, pricingReveal: true, log: '报价计算中：总报价 166,120 元 (利用率 99.12%)。检测到高烈度贴底压线风险！' },
+    {
+      id: 'y11',
+      stage: 7,
+      kind: 'escalate',
+      duration: 0,
+      escalateTitle: '报价策略压线重大风险 (🔴 升级决断)',
+      escalateBody: '当前提报利用率 99.12%，贴近最高限价。因为「最低价成交」规则，对手极大概率会下探 5% 左右空间（即 15.9 万元左右）。若我司仍贴顶提报，几乎 100% 丢标。是否同意自动执行「降价至 94.5%（约 15.8 万元）」的最优竞争模型，并在 ⑧ 翻绿报价风险红线？',
+      confidence: 0.58,
+      options: [
+        {
+          label: '采纳降价模型（¥158,380，抢占最低价合规位）',
+          effect: {
+            type: 'insert',
+            steps: [
+              { id: 'y11.sub1', stage: 7, kind: 'log', duration: 800, log: 'AI 自动重新分摊报价：各单项调降 ~5.2%，投标总价调整为 158,380 元，抢占安全极低限价位 ✅' },
+            ],
+          },
+        },
+        {
+          label: '维持 99.12% 压线报价（¥166,120，亮 ⚠️ 压线黄牌继续）',
+          effect: {
+            type: 'patch',
+            set: { redlineId: 'rl.pressure', 结果: 'warn' },
+          },
+        },
+      ],
+    },
+    { id: 'y12', stage: 6, kind: 'genBlock', duration: 800, blockId: 'blk.price922', focus: { docBlock: 'blk.price922', chapter: 'chap.p1' } },
+    { id: 'y13', stage: 8, kind: 'redlineResult', duration: 400, redlineId: 'rl.idx922' },
+    { id: 'y14', stage: 8, kind: 'redlineResult', duration: 400, redlineId: 'rl.copy922' },
+    { id: 'y15', stage: 8, kind: 'redlineResult', duration: 400, redlineId: 'rl.seal' },
+    { id: 'y16', stage: 8, kind: 'redlineResult', duration: 400, redlineId: 'rl.overlimit' },
+    { id: 'y17', stage: 8, kind: 'redlineResult', duration: 400, redlineId: 'rl.pressure' },
+    { id: 'y18', stage: 9, kind: 'export', duration: 0, checkpointTitle: '合规检验体系就绪 · 准备按三册独立分装打包导出' },
+  ],
+};

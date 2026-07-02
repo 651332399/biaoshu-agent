@@ -1,0 +1,6 @@
+{
+  "name": "智能标书编写 Agent",
+  "description": "智能标书编写 Agent 的前端 Demo。演示 AI 如何读懂招标文件并自主编写出一整套投标文件的完整交互逻辑，包含北京口腔（综合评分法）和 922 医院（最低价法）等真实招投标剧本。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
