@@ -1,20 +1,32 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 标书制作智能体前端
 
-# Run and deploy your AI Studio app
+这是标书制作智能体的 React/Vite 工作台。当前有两种模式：
 
-This contains everything you need to run your app locally.
+前端只保留真实后端接线模式：通过 `/api` 接入 `engine/app` FastAPI 服务，支持真实上传招标文件、消费 SSE 事件、查看 requirements artifact、人工确认并继续生成占位大纲/草稿/合规报告/docx。
 
-View your app in AI Studio: https://ai.studio/apps/fa6e3b4d-9e32-43f3-8649-40133fd83596
+## 运行
 
-## Run Locally
+```bash
+cd ../engine
+uv run uvicorn app.main:app --reload --port 8000
 
-**Prerequisites:**  Node.js
+cd ../biaoshu-agent
+npm ci
+npm run dev
+```
 
+浏览器打开 `http://localhost:3000/` 进入真实后端接线模式。
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 验证
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## 当前边界
+
+- `Live` 模式的第一条真实通路是上传 → ingest/analyze → requirements → 确认①。
+- outline/generate/compliance/export 已按同一事件协议提供可运行占位产物，用于前端联调；正式质量仍依赖后续 P2-P4 引擎节点替换。
+- 浏览器端 `exportDocx.ts` 保留为草稿预览；服务端产物存在时优先下载 `bid.docx`。

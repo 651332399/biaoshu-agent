@@ -1,4 +1,5 @@
-import type { Scenario, Step, StepKind, Focus } from './types';
+import type { BackendCoverageReport, BackendExportPlan, BackendOutline, BackendReport, BackendRequirement } from './types';
+import type { Focus, Scenario, Step, StepKind } from './demo/types';
 import { type Scheduler, realScheduler } from './scheduler';
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'awaiting';
@@ -17,6 +18,15 @@ export interface EngineState {
   focus: Focus | null;
   pendingCard: Step | null;
   redlineOverrides: Record<string, 'pass' | 'warn' | 'fail'>;
+  backendRequirements: BackendRequirement[];
+  backendExportPlan: BackendExportPlan | null;
+  backendOutline: BackendOutline | null;
+  backendCoverage: BackendCoverageReport | null;
+  backendReport: BackendReport | null;
+  serverDocxUrl: string | null;
+  serverPackageUrl: string | null;
+  error: string | null;
+  mode: 'demo' | 'live';
 }
 
 export function blocking(kind: StepKind): boolean {
@@ -38,6 +48,15 @@ function initialState(): EngineState {
     focus: null,
     pendingCard: null,
     redlineOverrides: {},
+    backendRequirements: [],
+    backendExportPlan: null,
+    backendOutline: null,
+    backendCoverage: null,
+    backendReport: null,
+    serverDocxUrl: null,
+    serverPackageUrl: null,
+    error: null,
+    mode: 'demo',
   };
 }
 
@@ -311,7 +330,7 @@ export class ScenarioEngine {
     }, (fired?.duration ?? 0) / this.state.speed);
   }
 
-  confirmCheckpoint() {
+  confirmCheckpoint(_requirements?: unknown) {
     if (this.state.status !== 'awaiting') return;
     const card = this.state.pendingCard;
     if (!card || (card.kind !== 'checkpoint' && card.kind !== 'export')) return;

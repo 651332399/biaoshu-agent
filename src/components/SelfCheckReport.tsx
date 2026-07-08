@@ -1,4 +1,4 @@
-import type { RedlineCheck } from '../engine/types';
+import type { RedlineCheck } from '../engine/demo/types';
 
 interface Props {
   redlines: RedlineCheck[];

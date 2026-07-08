@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
 import { PricingPanel } from './PricingPanel';
-import type { Pricing } from '../engine/types';
+import type { Pricing } from '../engine/demo/types';
 
 describe('PricingPanel', () => {
   const mockPricing: Pricing = {

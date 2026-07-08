@@ -1,4 +1,4 @@
-import type { Scenario } from '../engine/types';
+import type { Scenario } from '../engine/demo/types';
 
 export const kqyy: Scenario = {
   id: 'kqyy',

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
 import { SelfCheckReport } from './SelfCheckReport';
-import type { RedlineCheck } from '../engine/types';
+import type { RedlineCheck } from '../engine/demo/types';
 
 describe('SelfCheckReport', () => {
   const mockRedlines: RedlineCheck[] = [

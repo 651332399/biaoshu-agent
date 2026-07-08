@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { ScenarioEngine } from './ScenarioEngine';
-import type { Scenario, Step } from './types';
+import type { Scenario, Step } from './demo/types';
 import type { Scheduler } from './scheduler';
 
 function makeScenario(steps: Step[]): Scenario {

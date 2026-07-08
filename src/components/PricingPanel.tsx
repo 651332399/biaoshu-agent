@@ -1,4 +1,5 @@
-import type { Pricing } from '../engine/types';
+import type { Pricing } from '../engine/demo/types';
+import { RiskWarningCard } from './editor/RiskWarningCard';
 
 interface Props {
   pricing: Pricing;
@@ -68,6 +69,12 @@ export function PricingPanel({ pricing }: Props) {
             <strong className="font-bold">最低价策略高危警告: </strong>
             <span className="font-sans font-medium">{pricing.压线告警}</span>
           </div>
+        </div>
+      )}
+
+      {pricing.warnings && pricing.warnings.length > 0 && (
+        <div className="mt-4">
+          <RiskWarningCard items={pricing.warnings} />
         </div>
       )}
     </div>

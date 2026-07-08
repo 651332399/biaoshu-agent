@@ -1,14 +1,92 @@
 import { motion } from 'motion/react';
-import type { Step } from '../engine/types';
+import { useMemo, useState } from 'react';
+import type { BackendExportPlan, BackendOutline, BackendReport, BackendRequirement } from '../engine/types';
+import type { Step } from '../engine/demo/types';
 
 interface Props {
   card: Step;
-  onConfirm: () => void;
+  requirements?: BackendRequirement[];
+  artifact?: { label: string; value: unknown };
+  onConfirm: (artifact?: unknown) => void;
   onChoose: (index: number) => void;
 }
 
-export function DecisionCard({ card, onConfirm, onChoose }: Props) {
+const DRAFT_WINDOW = 12;
+
+/** 把编辑框(仅载入前 DRAFT_WINDOW 条)的改动按 id 合并回全量清单：
+ *  窗口内条目——编辑生效、从草稿中删除即删除；窗口外条目原样保留；新 id 追加到末尾。 */
+export function mergeDraftIntoRequirements(
+  full: BackendRequirement[],
+  parsed: BackendRequirement[],
+): BackendRequirement[] {
+  const windowIds = new Set(full.slice(0, DRAFT_WINDOW).map((item) => item.id));
+  const parsedById = new Map(parsed.map((item) => [item.id, item]));
+  const merged = full.flatMap((item) => {
+    const edited = parsedById.get(item.id);
+    if (edited) return [edited];
+    if (windowIds.has(item.id)) return [];
+    return [item];
+  });
+  const added = parsed.filter((item) => !full.some((existing) => existing.id === item.id));
+  return [...merged, ...added];
+}
+
+export function DecisionCard({ card, requirements = [], artifact, onConfirm, onChoose }: Props) {
   const isEscalate = card.kind === 'escalate';
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [showJsonEditor, setShowJsonEditor] = useState(false);
+  const grouped = useMemo(() => {
+    const order = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'];
+    return order
+      .map((type) => ({
+        type,
+        items: requirements.filter((item) => item.type === type),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [requirements]);
+  const initialDraft = useMemo(
+    () => JSON.stringify(requirements.slice(0, DRAFT_WINDOW), null, 2),
+    [requirements],
+  );
+  const artifactDraft = useMemo(
+    () => JSON.stringify(artifact?.value ?? null, null, 2),
+    [artifact],
+  );
+  const outline = isOutlineArtifact(artifact?.value) ? artifact.value : null;
+  const report = isReportArtifact(artifact?.value) ? artifact.value : null;
+  const exportPlan = isExportPlanArtifact(artifact?.value) ? artifact.value : null;
+  const negativeDeviations = report?.deviations.filter((item) => item.deviation === '负偏离') ?? [];
+  const warnDeviations = report?.deviations.filter((item) => item.deviation !== '无偏离') ?? [];
+
+  const confirmWithDraft = () => {
+    if (artifact) {
+      if (!draft || draft === artifactDraft) {
+        onConfirm();
+        return;
+      }
+      try {
+        onConfirm(JSON.parse(draft));
+      } catch {
+        setError('JSON 格式不正确，请修正后再确认。');
+      }
+      return;
+    }
+    if (requirements.length === 0 || !draft || draft === initialDraft) {
+      onConfirm();
+      return;
+    }
+    try {
+      const parsed = JSON.parse(draft) as BackendRequirement[];
+      if (!Array.isArray(parsed) || parsed.some((item) => !item || typeof item.id !== 'string')) {
+        setError('JSON 需为带 id 字段的要求数组。');
+        return;
+      }
+      onConfirm(mergeDraftIntoRequirements(requirements, parsed));
+    } catch {
+      setError('JSON 格式不正确，请修正后再确认。');
+    }
+  };
 
   return (
     <motion.div
@@ -38,6 +116,169 @@ export function DecisionCard({ card, onConfirm, onChoose }: Props) {
         {isEscalate ? card.escalateBody : card.checkpointBody}
       </p>
 
+      {!isEscalate && requirements.length > 0 && (
+        <div className="mb-3 space-y-2">
+          <div className="rounded-lg border border-blue-100 bg-white p-2 text-[11px] text-gray-600">
+            共抽取 {requirements.length} 条要求。编辑框载入前 {DRAFT_WINDOW} 条，改动按 id 合并回全量清单
+            （窗口内删除条目即删除该条，未载入的 {Math.max(requirements.length - DRAFT_WINDOW, 0)} 条保持不变）；
+            不改动直接确认则原样放行。
+          </div>
+          <div className="max-h-44 overflow-auto rounded-lg border border-blue-100 bg-white p-2 text-[11px] text-gray-700">
+            {grouped.map((group) => (
+              <div key={group.type} className="mb-2 last:mb-0">
+                <div className="mb-1 font-bold text-gray-800">
+                  {group.type} · {group.items.length} 条
+                </div>
+                <ul className="space-y-1">
+                  {group.items.slice(0, 4).map((item) => (
+                    <li key={item.id} className={item.mandatory ? 'text-red-700' : 'text-gray-600'}>
+                      {item.mandatory ? '★ ' : ''}
+                      [{item.id}] {item.text}
+                      {item.page !== null ? ` · 第 ${item.page} 页` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowJsonEditor((value) => !value)}
+            className="text-[11px] font-semibold text-[var(--accent)] hover:underline"
+          >
+            {showJsonEditor ? '收起原始 JSON' : '高级：编辑原始 JSON'}
+          </button>
+          {showJsonEditor && (
+            <textarea
+              value={draft || initialDraft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setError(null);
+              }}
+              className="h-40 w-full resize-y rounded-lg border border-blue-100 bg-white p-2 font-mono text-[11px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            />
+          )}
+          {error && <p className="text-[11px] font-semibold text-red-700">{error}</p>}
+        </div>
+      )}
+
+      {!isEscalate && artifact && (
+        <div className="mb-3 space-y-2">
+          <div className="rounded-lg border border-blue-100 bg-white p-3 text-[11px] text-gray-600">
+            当前确认产物：{artifact.label}。页面已转成人能审核的摘要；需要精修结构时再展开原始 JSON。
+          </div>
+
+          {outline && (
+            <div className="max-h-64 overflow-auto rounded-lg border border-blue-100 bg-white p-3 text-xs text-gray-700 space-y-2">
+              {outline.sections.map((section, index) => (
+                <div key={`${section.title}-${index}`} className="rounded-md border border-gray-100 bg-gray-50 p-2">
+                  <div className="font-semibold text-gray-900">
+                    {index + 1}. {section.title}
+                  </div>
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    覆盖要求 {section.maps_to_requirement_ids.length} 条；素材引用 {section.asset_refs.length} 项
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {report && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Metric label="覆盖率" value={`${report.coverage.responded}/${report.coverage.total}`} tone={report.coverage.missing.length ? 'warn' : 'pass'} />
+                <Metric label="漏响应" value={`${report.coverage.missing.length} 项`} tone={report.coverage.missing.length ? 'warn' : 'pass'} />
+                <Metric label="废标风险" value={`${report.coverage.废标风险项.length} 项`} tone={report.coverage.废标风险项.length ? 'fail' : 'pass'} />
+                <Metric label="负偏离" value={`${negativeDeviations.length} 项`} tone={negativeDeviations.length ? 'fail' : 'pass'} />
+              </div>
+
+              {report.coverage.missing.length === 0 && report.coverage.废标风险项.length === 0 && negativeDeviations.length === 0 ? (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700">
+                  未发现漏响应、废标风险或负偏离。可直接确认继续导出。
+                </div>
+              ) : (
+                <div className="max-h-56 overflow-auto rounded-lg border border-amber-100 bg-white p-3 text-xs text-gray-700 space-y-2">
+                  {report.coverage.missing.slice(0, 8).map((reqId) => (
+                    <div key={`missing-${reqId}`}>
+                      <ReviewRow tone="warn" title={`漏响应：${reqId}`} body="该要求没有映射到任何应答章节，导出前应补齐。" />
+                    </div>
+                  ))}
+                  {report.coverage.废标风险项.slice(0, 8).map((reqId) => (
+                    <div key={`risk-${reqId}`}>
+                      <ReviewRow tone="fail" title={`废标风险：${reqId}`} body="强制性要求未响应，可能导致无效投标。" />
+                    </div>
+                  ))}
+                  {negativeDeviations.slice(0, 8).map((item) => (
+                    <div key={`negative-${item.requirement_id}`}>
+                      <ReviewRow tone="fail" title={`负偏离：${item.requirement_id}`} body={item.招标要求原文} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {warnDeviations.length > 0 && (
+                <div className="rounded-lg border border-blue-100 bg-white p-3 text-[11px] text-gray-600">
+                  另有 {warnDeviations.length} 条非“无偏离”记录。这里优先展示会影响放行的漏项、废标风险和负偏离。
+                </div>
+              )}
+            </div>
+          )}
+
+          {exportPlan && (
+            <div className="max-h-64 overflow-auto rounded-lg border border-blue-100 bg-white p-3 text-xs text-gray-700 space-y-2">
+              <div className="font-semibold text-gray-900">
+                导出模式：{exportPlan.output_mode}；{exportPlan.volumes.length} 个文件{exportPlan.package_zip ? '，并打包 ZIP' : ''}
+              </div>
+              {exportPlan.volumes.map((volume, index) => (
+                <div key={volume.volume_id} className="rounded-md border border-gray-100 bg-gray-50 p-2">
+                  <div className="font-semibold text-gray-900">
+                    {index + 1}. {volume.cover_title}
+                    {volume.sealed_separately && <span className="ml-2 text-amber-700">单独密封</span>}
+                  </div>
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    文件名：{volume.file_name}
+                  </div>
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    目录：{volume.requires_toc ? '需要' : '不需要'}；索引表：{volume.requires_index_table ? '需要' : '不需要'}；签章页：{volume.requires_seal_page ? '需要' : '不需要'}
+                  </div>
+                  {volume.evidence[0] && (
+                    <div className="mt-1 line-clamp-2 text-[11px] text-gray-500">
+                      依据：{volume.evidence[0]}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!outline && !report && !exportPlan && (
+            <div className="rounded-lg border border-blue-100 bg-white p-3 text-xs text-gray-700">
+              该产物暂未配置专用审核视图，可展开原始 JSON 检查。
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowJsonEditor((value) => !value)}
+            className="text-[11px] font-semibold text-[var(--accent)] hover:underline"
+          >
+            {showJsonEditor ? '收起原始 JSON' : '高级：编辑原始 JSON'}
+          </button>
+
+          {showJsonEditor && (
+            <textarea
+              value={draft || artifactDraft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setError(null);
+              }}
+              className="h-48 w-full resize-y rounded-lg border border-blue-100 bg-white p-2 font-mono text-[11px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            />
+          )}
+          {error && <p className="text-[11px] font-semibold text-red-700">{error}</p>}
+        </div>
+      )}
+
       {isEscalate ? (
         <div className="flex flex-wrap gap-2">
           {card.options?.map((o, i) => (
@@ -52,12 +293,60 @@ export function DecisionCard({ card, onConfirm, onChoose }: Props) {
         </div>
       ) : (
         <button
-          onClick={onConfirm}
+          onClick={confirmWithDraft}
           className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90 active:scale-95 transition shadow-sm"
         >
           确认继续
         </button>
       )}
     </motion.div>
+  );
+}
+
+function isOutlineArtifact(value: unknown): value is BackendOutline {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && Array.isArray((value as BackendOutline).sections),
+  );
+}
+
+function isReportArtifact(value: unknown): value is BackendReport {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && (value as BackendReport).coverage
+      && Array.isArray((value as BackendReport).deviations),
+  );
+}
+
+function isExportPlanArtifact(value: unknown): value is BackendExportPlan {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && Array.isArray((value as BackendExportPlan).volumes),
+  );
+}
+
+function Metric({ label, value, tone }: { label: string; value: string; tone: 'pass' | 'warn' | 'fail' }) {
+  const toneClass = tone === 'pass'
+    ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+    : tone === 'warn'
+    ? 'border-amber-100 bg-amber-50 text-amber-700'
+    : 'border-red-100 bg-red-50 text-red-700';
+  return (
+    <div className={`rounded-lg border p-3 ${toneClass}`}>
+      <div className="text-[10px] font-semibold opacity-75">{label}</div>
+      <div className="mt-1 text-base font-bold">{value}</div>
+    </div>
+  );
+}
+
+function ReviewRow({ tone, title, body }: { tone: 'warn' | 'fail'; title: string; body: string }) {
+  return (
+    <div className={`rounded-md border p-2 ${tone === 'fail' ? 'border-red-100 bg-red-50' : 'border-amber-100 bg-amber-50'}`}>
+      <div className={`font-semibold ${tone === 'fail' ? 'text-red-700' : 'text-amber-700'}`}>{title}</div>
+      <div className="mt-1 line-clamp-3 text-[11px] text-gray-600">{body}</div>
+    </div>
   );
 }

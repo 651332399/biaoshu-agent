@@ -1,35 +1,30 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { RECENT_PROJECTS, RecentProjectRow } from './projects/ProjectsList';
 
 interface Props {
-  onStart: (fileName: string) => void;
-  projectName: string;
+  onStart: (file: File | string) => void;
+  onOpenProject?: (id: string) => void;
 }
 
-export function UploadIntro({ onStart, projectName }: Props) {
+export function UploadIntro({ onStart, onOpenProject }: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const startScanning = (fileName: string) => {
+  const startScanning = (file: File | string) => {
+    const fileName = typeof file === 'string' ? file : file.name;
     setSelectedFile(fileName);
     setIsParsing(true);
     setParseProgress(0);
 
-    // Simulate AI parsing progress
-    let currentProgress = 0;
-    const interval = window.setInterval(() => {
-      currentProgress += 5;
-      setParseProgress(currentProgress);
-      if (currentProgress >= 100) {
-        window.clearInterval(interval);
-        setTimeout(() => {
-          onStart(fileName);
-        }, 300);
-      }
-    }, 80);
+    if (file instanceof File) {
+      setParseProgress(15);
+      onStart(file);
+      return;
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -49,14 +44,14 @@ export function UploadIntro({ onStart, projectName }: Props) {
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      startScanning(file.name);
+      startScanning(file);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      startScanning(file.name);
+      startScanning(file);
     }
   };
 
@@ -65,15 +60,11 @@ export function UploadIntro({ onStart, projectName }: Props) {
   };
 
   const quickStart = () => {
-    startScanning(
-      projectName.includes('922')
-        ? '922医院计量检测采购文件_RFQ-Final.pdf'
-        : '北京口腔医院医用设备计量检测公告_v2.docx'
-    );
+    triggerFileSelect();
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gray-100 min-h-[500px]">
+    <div className="flex-1 overflow-y-auto flex flex-col items-center p-6 md:p-10 bg-[var(--canvas)] gap-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -90,7 +81,7 @@ export function UploadIntro({ onStart, projectName }: Props) {
           智能标书编写 Agent 工作台
         </h1>
         <p className="text-xs md:text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-md mx-auto">
-          请上传招标文件（支持 PDF/Docx/Scanner-OCR），AI 将自动实施逆向工程，映射并完成整套投标响应文件的自主起草与自检。
+          请上传招标文件（支持 PDF / DOC / DOCX / 扫描件 OCR），后端将自动解析、映射并生成投标响应文件与自检报告。
         </p>
 
         <AnimatePresence mode="wait">
@@ -100,33 +91,37 @@ export function UploadIntro({ onStart, projectName }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={triggerFileSelect}
-              className={`border-2 border-dashed rounded-2xl p-8 md:p-10 cursor-pointer transition-all ${
-                isDragActive
-                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] scale-102'
-                  : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50/50'
-              }`}
+              className="space-y-5"
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.xlsx"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <span className="text-4xl block mb-3 animate-bounce">📤</span>
-              <p className="text-sm font-semibold text-gray-700 mb-1 leading-snug">
-                拖拽招标文件到此处，或点击浏览文件
-              </p>
-              <p className="text-xs text-gray-400">
-                支持拖入任何 PDF / Word 文档或扫描版资质底件
-              </p>
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={triggerFileSelect}
+                className={`border-2 border-dashed rounded-2xl p-8 md:p-10 cursor-pointer transition-all ${
+                  isDragActive
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] scale-102'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50/50'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <span className="text-4xl block mb-3 animate-bounce">📤</span>
+                <p className="text-sm font-semibold text-gray-700 mb-1 leading-snug">
+                  拖拽招标文件到此处，或点击浏览文件
+                </p>
+                <p className="text-xs text-gray-400">
+                  支持真实 PDF / Word 招标文件或扫描版文件
+                </p>
+              </div>
 
-              <div className="h-px bg-gray-200 my-5 relative">
+              <div className="h-px bg-gray-200 relative">
                 <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--surface)] px-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   Or
                 </span>
@@ -134,13 +129,10 @@ export function UploadIntro({ onStart, projectName }: Props) {
 
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  quickStart();
-                }}
+                onClick={quickStart}
                 className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-black transition active:scale-95 shadow-sm"
               >
-                直接加载预置的：{projectName.split(' ')[0]} 招标文件
+                选择本地真实招标文件并接入后端
               </button>
             </motion.div>
           ) : (
@@ -175,7 +167,27 @@ export function UploadIntro({ onStart, projectName }: Props) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {!isParsing && (
+          <div className="mt-6 flex items-start gap-2 rounded-xl bg-[var(--accent-soft)] border border-blue-100 px-4 py-3 text-left">
+            <span className="text-base shrink-0">🗄️</span>
+            <p className="text-[11px] leading-relaxed text-gray-600">
+              编写将自动调用<b className="text-[var(--accent)]">企业资料库</b>(5 大底座)匹配资质、人员、业绩与模板。可先到「资料库」菜单补齐资料。
+            </p>
+          </div>
+        )}
       </motion.div>
+
+      {!isParsing && (
+        <div className="w-full max-w-xl">
+          <h2 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2.5 px-1">最近项目</h2>
+          <div className="space-y-2.5">
+            {RECENT_PROJECTS.map((p) => (
+              <RecentProjectRow key={p.id} project={p} onOpen={onOpenProject} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

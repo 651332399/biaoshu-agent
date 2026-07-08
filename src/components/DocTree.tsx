@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { Volume, Focus } from '../engine/types';
+import type { Requirement, Volume, Focus } from '../engine/demo/types';
 import { ScenarioEngine } from '../engine/ScenarioEngine';
+import type { WorkspaceEngine } from '../engine/sources';
 
 interface Props {
   volumes: Volume[];
+  requirements?: Requirement[];
   grownVolumes: string[];
   focus: Focus | null;
-  engine: ScenarioEngine;
+  engine: ScenarioEngine | WorkspaceEngine;
 }
 
-export function DocTree({ volumes, grownVolumes, focus, engine }: Props) {
+export function DocTree({ volumes, requirements = [], grownVolumes, focus, engine }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const visibleVolumes = volumes.filter((v) => grownVolumes.includes(v.id));
 
@@ -122,6 +124,27 @@ export function DocTree({ volumes, grownVolumes, focus, engine }: Props) {
                               {c.类型}
                             </span>
                           </div>
+                          {c.maps_to_requirement_ids && c.maps_to_requirement_ids.length > 0 && (
+                            <div className="ml-2 mt-1 rounded-md bg-white/70 px-2 py-1 text-[10px] text-gray-500">
+                              <div className="font-semibold text-gray-600">
+                                映射要求 {c.maps_to_requirement_ids.length} 条
+                              </div>
+                              {focus?.chapter === c.id && (
+                                <ul className="mt-1 space-y-1">
+                                  {c.maps_to_requirement_ids.slice(0, 5).map((reqId) => {
+                                    const req = requirements.find((item) => item.id === reqId);
+                                    return (
+                                      <li key={reqId} className={req?.标识 ? 'text-red-700' : ''}>
+                                        {req?.标识 ? `${req.标识} ` : ''}
+                                        {reqId}
+                                        {req ? ` · ${req.文本}` : ''}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              )}
+                            </div>
+                          )}
                         </li>
                       );
                     })}

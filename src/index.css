@@ -13,16 +13,33 @@
   --text: #0f172a;
   --muted: #64748b;
   --bad: #be123c; /* Rose/Crimson for hard compliance warnings */
+  --ok: #047857; /* Emerald for passed compliance */
+  --ok-soft: #dcfce7;
+  --canvas: #eef1f6; /* 1c workspace canvas bg */
+  --paper: #ffffff; /* Document paper surface */
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif; /* Bid document body */
 }
 
 body {
-  background-color: #f8fafc;
+  background-color: var(--canvas);
   color: var(--text);
   font-family: var(--font-sans);
   overflow: hidden;
   margin: 0;
   padding: 0;
 }
+
+/* 1c document paper body uses serif for a real-bid feel */
+.doc-serif {
+  font-family: var(--font-serif);
+}
+
+/* Annotation bubble subtle pulse to draw the eye to a pending decision */
+@keyframes annotationGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(190, 18, 60, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(190, 18, 60, 0.12); }
+}
+.annotation-glow { animation: annotationGlow 2.4s ease-in-out infinite; }
 
 /* Custom fade-in and scale-in animations for a seamless reactive UI look */
 @keyframes fadeIn {
@@ -83,4 +100,56 @@ body {
 
 .chapter-highlight {
   animation: highlightPulse 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.paper-editor {
+  color: #111827;
+  font-size: 15px;
+  line-height: 2;
+}
+
+.paper-editor h2 {
+  margin: 18px 0 14px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.paper-editor p {
+  margin: 0 0 12px;
+  text-indent: 2em;
+  white-space: pre-wrap;
+}
+
+.paper-editor table {
+  width: 100%;
+  margin: 14px 0 18px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.paper-editor th,
+.paper-editor td {
+  border: 1px solid #9ca3af;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.paper-editor th {
+  background: #f3f4f6;
+  text-align: center;
+  font-weight: 700;
+}
+
+.paper-editor .selectedCell::after {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.paper-editor mark {
+  background: #fef3c7;
+  border-bottom: 1px solid #f59e0b;
+  padding: 0 1px;
 }

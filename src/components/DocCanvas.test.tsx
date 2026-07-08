@@ -22,9 +22,13 @@ describe('DocCanvas', () => {
   };
 
   test('renders visible blocks and the file tree', () => {
-    render(<DocCanvas state={dummyState} scenario={kqyy} />);
-    expect(screen.getByText('开标一览表 (投标函附录)')).toBeInTheDocument();
-    expect(screen.getByText('壹拾陆万玖仟捌佰贰拾元整')).not.toBeInTheDocument(); // It's Beijing 口腔, ¥269,820.00
-    expect(screen.getByText('贰拾陆万玖仟捌佰贰拾元整')).toBeInTheDocument();
+    const engine = {
+      revealChapterManually: () => {},
+      revealVolumeManually: () => {},
+    } as any;
+    render(<DocCanvas state={dummyState} scenario={kqyy} engine={engine} />);
+    expect(screen.getAllByText('开标一览表 (投标函附录)').length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain('壹拾陆万玖仟捌佰贰拾元整'); // It's Beijing 口腔, ¥269,820.00
+    expect(document.body.textContent).toContain('贰拾陆万玖仟捌佰贰拾元整');
   });
 });
