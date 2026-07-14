@@ -79,6 +79,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const registryForms = tenderSpec?.forms.filter((form) => form.source_kind === 'registry') ?? [];
   const negativeDeviations = report?.deviations.filter((item) => item.deviation === '负偏离') ?? [];
   const warnDeviations = report?.deviations.filter((item) => item.deviation !== '无偏离') ?? [];
+  const pendingMaterials = report?.pending_materials ?? [];
 
   const confirmWithDraft = () => {
     if (tenderSpec) {
@@ -324,6 +325,25 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
               {warnDeviations.length > 0 && (
                 <div className="rounded-lg border border-blue-100 bg-white p-3 text-[11px] text-gray-600">
                   另有 {warnDeviations.length} 条非“无偏离”记录。这里优先展示会影响放行的漏项、废标风险和负偏离。
+                </div>
+              )}
+
+              {pendingMaterials.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[11px] font-semibold text-gray-700">
+                    待补充素材清单 · {pendingMaterials.length} 项
+                  </div>
+                  <div className="max-h-56 overflow-auto rounded-lg border border-amber-100 bg-white p-3 text-xs text-gray-700 space-y-2">
+                    {pendingMaterials.slice(0, 8).map((item, index) => (
+                      <div key={`pending-material-${item.section_title}-${index}`}>
+                        <ReviewRow
+                          tone="warn"
+                          title={item.section_title}
+                          body={`关联 ${item.maps_to_requirement_ids.length} 条要求，尚未匹配到素材库中的证明材料。`}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

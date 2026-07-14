@@ -78,9 +78,15 @@ export interface BackendCoverageReport {
   废标风险项: string[];
 }
 
+export interface BackendPendingMaterialItem {
+  section_title: string;
+  maps_to_requirement_ids: string[];
+}
+
 export interface BackendReport {
   coverage: BackendCoverageReport;
   deviations: BackendDeviationItem[];
+  pending_materials?: BackendPendingMaterialItem[];
 }
 
 export interface BackendAssetMatch {
