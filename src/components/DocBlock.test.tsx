@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi } from 'vitest';
 import { DocBlock } from './DocBlock';
-import type { DocBlockData } from '../engine/types';
+import type { DocBlockData } from '../engine/demo/types';
 
 describe('DocBlock', () => {
   const tableBlock: DocBlockData = {

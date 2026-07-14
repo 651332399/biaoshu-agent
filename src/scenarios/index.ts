@@ -1,4 +1,4 @@
-import type { Scenario } from '../engine/types';
+import type { Scenario } from '../engine/demo/types';
 import { kqyy } from './kqyy';
 import { yy922 } from './yy922';
 

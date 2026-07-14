@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; font-family:'Inter','Noto Sans SC',system-ui,sans-serif; color:#0f172a; -webkit-font-smoothing:antialiased; background:#eef1f6; }
+  @keyframes blink { 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
+  @keyframes softpulse { 0%,100%{opacity:1;} 50%{opacity:.45;} }
+  a { color:#1e40af; text-decoration:none; } a:hover { color:#1e3a8a; }
+</style>
+</helmet>
+<div style="padding:56px 64px 110px; background:#eef1f6; min-height:100vh;">
+
+  <section style="max-width:1440px; margin:0 auto 46px;">
+    <div style="display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:999px; background:#dcfce7; color:#047857; font-size:12px; font-weight:700;">
+      <span style="width:6px;height:6px;border-radius:50%;background:#047857;"></span>方向 1c 定稿 · 全功能页面
+    </div>
+    <h1 style="font-size:34px; font-weight:800; margin:18px 0 10px; letter-spacing:-0.01em;">文档为中心 · 标书编辑器 · 完整页面集</h1>
+    <p style="font-size:15px; line-height:1.7; color:#475569; max-width:940px; margin:0 0 18px;">
+      以 1c「全屏标书编辑器」为统一范式展开全部功能页面。新增<b>全局左侧菜单</b>（编辑 / 资料库 / 项目），把<b>企业资料库独立成一级页面</b>——它是需要检索、上传、维护、跨项目复用的管理型内容，做成常驻菜单比塞在侧栏更合理。编辑器则贯穿 9 个阶段：上传 → 要求确认 → 生成 → 报价 → 自检 → 导出。
+    </p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P1 上传入口</span>
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P2 要求确认 · 把关</span>
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P3 生成中</span>
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P4 报价测算</span>
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P5 合规自检</span>
+      <span style="color:#334155; background:#fff; border:1px solid #e2e8f0; padding:4px 11px; border-radius:999px;">P6 导出打包</span>
+      <span style="color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; padding:4px 11px; border-radius:999px; font-weight:600;">P7 企业资料库（独立菜单）</span>
+    </div>
+  </section>
+
+  <div style="display:flex; flex-direction:column; gap:60px; align-items:center;">
+
+    <!-- ==================== P1 上传入口 ==================== -->
+    <div id="p1" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P1</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">上传入口 · 新建标书</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">拖入招标文件即接入后端解析；下方是最近项目，可继续未完成的标书。</p></div></div>
+      <div style="width:1440px; height:900px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; background:#f6f8fb;">
+          <div style="height:58px; display:flex; align-items:center; padding:0 26px; border-bottom:1px solid #e2e8f0; background:#fff; gap:10px;">
+            <span style="font-size:15px; font-weight:800; color:#0f172a;">标书编辑器</span>
+            <span style="font-size:10px; font-weight:700; font-family:'JetBrains Mono',monospace; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:2px 7px; border-radius:5px;">Live · 后端接入</span>
+          </div>
+          <div style="flex:1; overflow:auto; padding:44px 56px; display:flex; gap:40px; align-items:flex-start;">
+            <div style="flex:1; max-width:620px;">
+              <h2 style="font-size:24px; font-weight:800; margin:0 0 6px;">上传招标文件，开始编写标书</h2>
+              <p style="font-size:13.5px; color:#64748b; margin:0 0 22px; line-height:1.6;">支持 PDF / DOC / DOCX / 扫描件 OCR。上传后后端将自动解析版面、抽取评审要求与废标红线，并进入「要求确认」把关。</p>
+              <div style="border:2px dashed #cbd5e1; border-radius:18px; background:#fff; padding:50px 30px; text-align:center;">
+                <div style="width:64px;height:64px;border-radius:16px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">📤</div>
+                <p style="font-size:15px; font-weight:700; color:#334155; margin:0 0 5px;">拖拽招标文件到此处，或点击浏览</p>
+                <p style="font-size:12px; color:#94a3b8; margin:0 0 20px;">单文件最大 200MB · 扫描件自动 OCR</p>
+                <button style="padding:11px 24px; border:none; border-radius:11px; background:#1e40af; color:#fff; font-size:13.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px -8px rgba(30,64,175,.6);">选择本地招标文件</button>
+              </div>
+              <div style="margin-top:16px; display:flex; align-items:center; gap:10px; padding:12px 16px; background:#eff6ff; border:1px solid #dbeafe; border-radius:12px;">
+                <span style="font-size:16px;">🗄️</span>
+                <span style="font-size:12.5px; color:#1e40af; line-height:1.5;">编写将自动调用<b>企业资料库</b>（5 大底座）匹配资质、人员、业绩与模板。可先到「资料库」菜单补齐资料。</span>
+              </div>
+            </div>
+            <div style="width:400px; flex-shrink:0;">
+              <div style="font-size:12px; font-weight:700; color:#64748b; letter-spacing:.04em; margin-bottom:12px;">最近项目</div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="background:#fff; border:1px solid #dbeafe; border-radius:13px; padding:14px 16px; box-shadow:0 6px 16px -12px rgba(15,23,42,.3);">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;"><span style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">北京口腔医院 2026 医用设备计量检测</span><span style="font-size:10px; font-weight:700; color:#1e40af; background:#eff6ff; padding:2px 8px; border-radius:999px; flex-shrink:0;">进行中</span></div>
+                  <div style="margin-top:10px; height:5px; border-radius:999px; background:#eef2f7; overflow:hidden;"><div style="width:67%;height:100%;background:#1e40af;"></div></div>
+                  <div style="margin-top:7px; font-size:11px; color:#94a3b8;">阶段 6 / 9 · 生成中 · 综合评分法 · 限价 ¥27.0万</div>
+                </div>
+                <div style="background:#fff; border:1px solid #e6eaf1; border-radius:13px; padding:14px 16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;"><span style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">海淀区疾控中心检验设备维保</span><span style="font-size:10px; font-weight:700; color:#047857; background:#ecfdf5; padding:2px 8px; border-radius:999px; flex-shrink:0;">已导出</span></div>
+                  <div style="margin-top:7px; font-size:11px; color:#94a3b8;">9 / 9 · 已打包 bid.docx · 最低价法</div>
+                </div>
+                <div style="background:#fff; border:1px solid #e6eaf1; border-radius:13px; padding:14px 16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;"><span style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">协和医院影像设备计量校准</span><span style="font-size:10px; font-weight:700; color:#64748b; background:#f1f5f9; padding:2px 8px; border-radius:999px; flex-shrink:0;">草稿</span></div>
+                  <div style="margin-top:7px; font-size:11px; color:#94a3b8;">阶段 2 / 9 · 待确认要求清单</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P2 要求确认 ==================== -->
+    <div id="p2" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P2</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">要求确认 · 第一个把关（阶段 1–2）</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">解析结果作为一份可复核的「要求清单」文档呈现，Copilot 给出策略与放行动作。★ 强制项标红。</p></div></div>
+      <div style="width:1440px; height:940px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+          <div style="height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div><div style="font-size:13.5px; font-weight:700;">投标文件.docx</div><div style="font-size:10.5px; color:#94a3b8;">北京口腔医院 医用设备计量检测 · 迈创精准</div></div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px;">
+                <span style="font-weight:700; color:#fff; background:#1e40af; padding:3px 9px; border-radius:6px;">1·2 要求确认</span>
+                <span style="color:#94a3b8;">→ 3 结构 → … → 9 导出</span>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1; display:flex; min-height:0;">
+            <!-- left: requirements filter nav -->
+            <div style="width:236px; flex-shrink:0; border-right:1px solid #e2e8f0; background:#fbfcfe; padding:16px 14px; overflow:auto;">
+              <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">🔍 要求分类（27 项）</div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; background:#fef2f2; font-size:12.5px; font-weight:700; color:#be123c;">废标红线 <span>8</span></div>
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#475569;">资质要求 <span style="color:#94a3b8;">4</span></div>
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#475569;">评分项 <span style="color:#94a3b8;">6</span></div>
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#475569;">技术参数 <span style="color:#94a3b8;">5</span></div>
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#475569;">商务条款 <span style="color:#94a3b8;">3</span></div>
+                <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#475569;">格式要求 <span style="color:#94a3b8;">1</span></div>
+              </div>
+              <div style="margin-top:18px; padding:12px; border-radius:11px; background:#fffbeb; border:1px solid #fde68a;">
+                <div style="font-size:11.5px; font-weight:700; color:#b45309; margin-bottom:4px;">⚠️ 需重点核对</div>
+                <div style="font-size:11px; color:#7c5410; line-height:1.55;">★ 强制项 8 条，漏答即废标。请逐条确认无误再放行。</div>
+              </div>
+            </div>
+            <!-- center: requirements document -->
+            <div style="flex:1; min-width:0; background:#eef1f6; overflow:auto; padding:26px 30px;">
+              <div style="max-width:760px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 14px 44px -16px rgba(15,23,42,.22); border:1px solid #e6eaf1; padding:40px 44px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eef1f6; padding-bottom:14px; margin-bottom:20px;">
+                  <h2 style="font-size:17px; font-weight:800; margin:0;">招标要求清单 · AI 抽取</h2>
+                  <span style="font-size:11px; color:#64748b;">共 27 项 · 8 条 ★ 强制</span>
+                </div>
+                <div style="font-size:11px; font-weight:800; color:#be123c; margin-bottom:10px;">● 废标红线（强制性）</div>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
+                  <div style="border:1px solid #fecdd3; background:#fff5f6; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#7f1d1d; line-height:1.55;"><b style="color:#be123c;">★</b> 投标报价不得超过最高限价 ¥270,000 <span style="color:#be123c; font-size:11px;">· 第 12 页 · 权重 10 分</span></div>
+                  <div style="border:1px solid #fecdd3; background:#fff5f6; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#7f1d1d; line-height:1.55;"><b style="color:#be123c;">★</b> 承诺协助强制检定及强检送检申报 <span style="color:#be123c; font-size:11px;">· 第 18 页</span></div>
+                  <div style="border:1px solid #fecdd3; background:#fff5f6; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#7f1d1d; line-height:1.55;"><b style="color:#be123c;">★</b> 拟任技术负责人须具备二级及以上注册计量师资格 <span style="color:#be123c; font-size:11px;">· 第 21 页 · 13 分</span></div>
+                </div>
+                <div style="font-size:11px; font-weight:800; color:#1e40af; margin-bottom:10px;">● 评分项（技术池 90 分）</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="border:1px solid #e6eaf1; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#334155; line-height:1.55;">京津冀同类三甲医院计量检测业绩，每例 3 分，最高 10 分 <span style="color:#94a3b8; font-size:11px;">· 10 分</span></div>
+                  <div style="border:1px solid #e6eaf1; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#334155; line-height:1.55;">采购需求参数及条款响应，无负偏离 <span style="color:#94a3b8; font-size:11px;">· 22 分</span></div>
+                  <div style="border:1px solid #e6eaf1; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#334155; line-height:1.55;">整体检测服务方案（方案 / 流程 / 报告质量控制） <span style="color:#94a3b8; font-size:11px;">· 15 分</span></div>
+                  <div style="border:1px solid #e6eaf1; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#334155; line-height:1.55;">具有 CNAS 国家认可证书 <span style="color:#94a3b8; font-size:11px;">· 5 分</span></div>
+                </div>
+              </div>
+            </div>
+            <!-- right: copilot confirm -->
+            <div style="width:322px; flex-shrink:0; border-left:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:18px 16px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;"><div style="width:28px;height:28px;border-radius:9px;background:#1e40af;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;">🤖</div><span style="font-size:14px; font-weight:800;">编写 Copilot</span></div>
+              <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:13px; padding:14px; margin-bottom:14px;">
+                <div style="font-size:12px; font-weight:700; color:#1e40af; margin-bottom:8px;">阶段 2 · 投标策略建议</div>
+                <p style="font-size:11.5px; color:#3b60c4; line-height:1.6; margin:0;">综合评分法，价格权重仅 10%、技术+业绩占 90%。建议<b>顶格报价 ¥269,820（99.93%）</b>，资源全面倾斜技术方案还原度与专家加分项。</p>
+              </div>
+              <div style="background:#fff; border:1px solid #e6eaf1; border-radius:13px; padding:14px; margin-bottom:16px;">
+                <div style="font-size:11.5px; font-weight:700; color:#334155; margin-bottom:8px;">抽取质量</div>
+                <div style="display:flex; flex-direction:column; gap:7px; font-size:11.5px; color:#475569;">
+                  <div style="display:flex; justify-content:space-between;"><span>要求条目</span><b>27 项</b></div>
+                  <div style="display:flex; justify-content:space-between;"><span>★ 强制红线</span><b style="color:#be123c;">8 项</b></div>
+                  <div style="display:flex; justify-content:space-between;"><span>带页码定位</span><b>25 / 27</b></div>
+                </div>
+              </div>
+              <button style="width:100%; padding:12px; border:none; border-radius:11px; background:#1e40af; color:#fff; font-size:13.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px -8px rgba(30,64,175,.6); margin-bottom:9px;">确认清单 · 搭建结构 →</button>
+              <button style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:11px; background:#fff; color:#475569; font-size:12.5px; font-weight:600; cursor:pointer;">编辑要求 / 高级 JSON</button>
+              <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0;">
+                <div style="display:flex; align-items:center; gap:8px; padding:7px 8px 7px 12px; border:1px solid #dbeafe; border-radius:12px; background:#fff;">
+                  <span style="color:#94a3b8; font-size:15px;">📎</span><span style="flex:1; font-size:12px; color:#94a3b8;">对某条要求提问或补充…</span><button style="width:30px;height:30px;border:none;border-radius:8px;background:#1e40af;color:#fff;font-size:12px;cursor:pointer;">➤</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P3 生成中 ==================== -->
+    <div id="p3" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P3</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">生成中 · 核心编辑器（阶段 6）</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">标书正文为主体；资料匹配以行内证据芯片嵌入，Agent 决策以正文旁批注气泡呈现，Copilot 常驻右栏。</p></div></div>
+      <div style="width:1440px; height:940px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+          <div style="height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div><div style="font-size:13.5px; font-weight:700;">投标文件.docx</div><div style="font-size:10.5px; color:#94a3b8;">北京口腔医院 医用设备计量检测 · 迈创精准</div></div>
+            <div style="display:flex; align-items:center; gap:14px;">
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:#64748b;"><span style="width:6px;height:6px;border-radius:50%;background:#059669;"></span>AI 自动保存 · 阶段 6/9</span>
+              <button style="padding:7px 16px; border:none; border-radius:9px; background:#1e40af; color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">导出分册 →</button>
+            </div>
+          </div>
+          <div style="flex:1; display:flex; min-height:0;">
+            <div style="width:262px; flex-shrink:0; border-right:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:16px 14px;">
+              <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">📂 分册结构树</div>
+              <div style="display:flex; align-items:center; gap:7px; padding:9px 10px; border-radius:9px; background:#eef2f7; font-size:13px; font-weight:700; color:#334155; margin-bottom:6px;"><span>📁</span>投标文件（响应分册）</div>
+              <div style="border-left:1px solid #e2e8f0; margin-left:10px; padding-left:11px; display:flex; flex-direction:column; gap:1px;">
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第一章 营业执照与资质</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第二章 资格声明书</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第三章 承诺函与承诺书</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第五章 开标一览表</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#94a3b8;"><span>○</span>第六章 分项报价表</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第七章 需求偏离表</div>
+                <div style="display:flex; align-items:flex-start; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span><span>第八章 业绩与团队 <span style="display:inline-block; margin-top:3px; font-size:9.5px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; padding:1px 6px; border-radius:999px;">1 条批注</span></span></div>
+                <div style="display:flex; align-items:center; gap:7px; padding:8px 9px; border-radius:8px; background:#eff6ff; border:1px solid #dbeafe; font-size:12.5px; font-weight:700; color:#1e40af;"><span style="width:6px;height:6px;border-radius:50%;background:#1e40af;animation:softpulse 1.4s infinite;"></span>第九章 服务方案 <span style="margin-left:auto; font-size:9px; background:#dbeafe; padding:1px 6px; border-radius:999px;">写作中</span></div>
+              </div>
+              <div style="margin-top:18px; padding:12px; border-radius:11px; background:#fff; border:1px solid #e6eaf1;">
+                <div style="font-size:11px; font-weight:700; color:#334155; margin-bottom:8px;">整册进度</div>
+                <div style="height:6px; border-radius:999px; background:#eef2f7; overflow:hidden; margin-bottom:6px;"><div style="width:67%;height:100%;background:#1e40af;"></div></div>
+                <div style="font-size:11px; color:#94a3b8;">8/9 章已成稿 · 第九章 67%</div>
+              </div>
+            </div>
+            <div style="flex:1; min-width:0; background:#eef1f6; overflow:auto; padding:28px 30px;">
+              <div style="max-width:840px; margin:0 auto; display:flex; gap:16px; align-items:flex-start;">
+                <div style="flex:1; min-width:0; background:#fff; border-radius:6px; box-shadow:0 14px 44px -16px rgba(15,23,42,.24); border:1px solid #e6eaf1; padding:52px 54px; font-family:'Noto Serif SC',serif;">
+                  <div style="text-align:center; font-size:10.5px; color:#94a3b8; letter-spacing:.1em; border-bottom:1px solid #eef1f6; padding-bottom:10px; margin-bottom:24px; font-family:'Inter',sans-serif;">投标文件 · 迈创精准</div>
+                  <h2 style="font-size:19px; font-weight:700; margin:0 0 16px; text-align:center;">第九章　整体服务方案与质量控制</h2>
+                  <p style="font-size:14.5px; line-height:2.05; color:#1f2937; margin:0 0 16px; text-align:justify;">我司依据 ISO 9001 质量管理体系与 <span style="display:inline-flex; align-items:center; gap:4px; background:#eff6ff; border:1px solid #dbeafe; border-radius:6px; padding:0 6px; font-size:12px; color:#1e40af; font-family:'Inter',sans-serif; vertical-align:1px;">📎 CNAS 认可证书 L48532</span> 实验室认可准则，针对北京口腔医院建立专属质控闭环：现场响应时间缩短至 1 天（大幅优于 ≤5 天标准）；检测数据实施双人交互复核机制，全部流程通过数字化计量平台可直接追溯至国家计量基准。</p>
+                  <p style="font-size:14.5px; line-height:2.05; color:#1f2937; margin:0; text-align:justify;">配备精密移液器校准器、黑体炉、数字多功能计量标准器等标准器 134 项。<span style="background:#fff7ed; box-shadow:inset 0 -2px 0 #fdba74;">售后提供 8 小时极速出具检测报告服务及突发故障应急返工机制</span><span style="display:inline-block; width:2px; height:15px; background:#1e40af; vertical-align:-2px; animation:blink 1s step-end infinite;"></span>，全天候保障临床科室计量器具零停摆。</p>
+                </div>
+                <div style="width:230px; flex-shrink:0; display:flex; flex-direction:column; gap:12px;">
+                  <div style="background:#fff; border:1px solid #fde68a; border-radius:12px; box-shadow:0 8px 22px -14px rgba(15,23,42,.2); padding:13px 14px;">
+                    <div style="display:flex; align-items:center; gap:7px; margin-bottom:7px;"><div style="width:22px;height:22px;border-radius:50%;background:#1e40af;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">AI</div><span style="font-size:11px; font-weight:700; color:#334155;">AI 审阅</span><span style="margin-left:auto; font-size:9.5px; color:#b45309; background:#fffbeb; padding:1px 6px; border-radius:999px;">待决断</span></div>
+                    <p style="font-size:11.5px; line-height:1.6; color:#475569; margin:0 0 10px;">业绩口径存疑：招标要求「京津冀」，现为北京 3 例。建议补充津冀业绩，置信度 62%。</p>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                      <button style="width:100%; padding:7px; border:none; border-radius:8px; background:#1e40af; color:#fff; font-size:11.5px; font-weight:700; cursor:pointer;">采纳 · 补充津冀业绩</button>
+                      <button style="width:100%; padding:7px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#64748b; font-size:11.5px; font-weight:600; cursor:pointer;">保持现状</button>
+                    </div>
+                  </div>
+                  <div style="background:#fff; border:1px solid #a7f3d0; border-radius:12px; padding:11px 13px;">
+                    <div style="display:flex; align-items:center; gap:6px;"><span style="color:#059669;font-size:13px;">✅</span><span style="font-size:11.5px; font-weight:700; color:#047857;">CNAS 证书已插入</span></div>
+                    <p style="font-size:11px; color:#64748b; margin:6px 0 0; line-height:1.5;">满足「实验室国家认可」5 分项</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="width:322px; flex-shrink:0; border-left:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:18px 16px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;"><div style="width:28px;height:28px;border-radius:9px;background:#1e40af;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;">🤖</div><span style="font-size:14px; font-weight:800;">编写 Copilot</span></div>
+              <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:13px; padding:14px; margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:7px; margin-bottom:8px;"><span style="width:7px;height:7px;border-radius:50%;background:#1e40af;animation:softpulse 1.3s infinite;"></span><span style="font-size:12px; font-weight:700; color:#1e40af;">正在生成 · 第九章</span></div>
+                <p style="font-size:11.5px; color:#3b60c4; margin:0 0 8px; line-height:1.5;">组装整体服务方案与质量控制体系…</p>
+                <div style="height:5px; border-radius:999px; background:#dbeafe; overflow:hidden;"><div style="width:67%;height:100%;background:#1e40af;"></div></div>
+              </div>
+              <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:13px; padding:13px; margin-bottom:18px;">
+                <div style="font-size:12px; font-weight:800; color:#b45309; margin-bottom:5px;">⏸ 1 项待决断</div>
+                <p style="font-size:11.5px; color:#7c5410; margin:0;">业绩口径匹配（见正文右侧批注）</p>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em;">企业资料底库 · 5 大底座</span>
+                <span style="font-size:10.5px; font-weight:600; color:#1e40af; cursor:pointer;">进入资料库 →</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; gap:9px; padding:10px 12px; background:#fff; border:1px solid #e6eaf1; border-radius:10px;"><span style="font-size:13px;">🏅</span><span style="flex:1; font-size:11.5px; color:#334155;">CNAS 认可证书 L48532</span><span style="font-size:10px; font-weight:700; color:#047857; background:#ecfdf5; padding:2px 7px; border-radius:999px;">命中</span></div>
+                <div style="display:flex; align-items:center; gap:9px; padding:10px 12px; background:#fff; border:1px solid #e6eaf1; border-radius:10px;"><span style="font-size:13px;">👤</span><span style="flex:1; font-size:11.5px; color:#334155;">武文君 · 二级注册计量师证</span><span style="font-size:10px; font-weight:700; color:#047857; background:#ecfdf5; padding:2px 7px; border-radius:999px;">命中</span></div>
+                <div style="display:flex; align-items:center; gap:9px; padding:10px 12px; background:#fff; border:1px solid #fde68a; border-radius:10px;"><span style="font-size:13px;">📈</span><span style="flex:1; font-size:11.5px; color:#334155;">津冀同类三甲业绩</span><span style="font-size:10px; font-weight:700; color:#b45309; background:#fffbeb; padding:2px 7px; border-radius:999px;">需补充</span></div>
+              </div>
+              <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0;">
+                <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;"><span style="font-size:11px; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:3px 9px; border-radius:999px; cursor:pointer;">补充津冀业绩</span><span style="font-size:11px; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:3px 9px; border-radius:999px; cursor:pointer;">换报价章节口径</span></div>
+                <div style="display:flex; align-items:center; gap:8px; padding:7px 8px 7px 12px; border:1px solid #dbeafe; border-radius:12px; background:#fff;"><span style="color:#94a3b8; font-size:15px;">📎</span><span style="flex:1; font-size:12px; color:#94a3b8;">和 Copilot 对话或上传资料…</span><button style="width:30px;height:30px;border:none;border-radius:8px;background:#1e40af;color:#fff;font-size:12px;cursor:pointer;">➤</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P4 报价测算 ==================== -->
+    <div id="p4" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P4</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">报价测算（阶段 7）</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">开标一览表与分项报价表作为文档正文；压线利用率与勾稽尾差在文末以警示卡呈现，Copilot 给出测算逻辑。</p></div></div>
+      <div style="width:1440px; height:940px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+          <div style="height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div><div style="font-size:13.5px; font-weight:700;">投标文件.docx</div><div style="font-size:10.5px; color:#94a3b8;">阶段 7 · 报价测算</div></div>
+            <span style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:#64748b;"><span style="width:6px;height:6px;border-radius:50%;background:#059669;"></span>AI 自动保存 · 阶段 7/9</span>
+          </div>
+          <div style="flex:1; display:flex; min-height:0;">
+            <div style="width:262px; flex-shrink:0; border-right:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:16px 14px;">
+              <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">📂 分册结构树</div>
+              <div style="display:flex; align-items:center; gap:7px; padding:9px 10px; border-radius:9px; background:#eef2f7; font-size:13px; font-weight:700; color:#334155; margin-bottom:6px;"><span>📁</span>投标文件（响应分册）</div>
+              <div style="border-left:1px solid #e2e8f0; margin-left:10px; padding-left:11px; display:flex; flex-direction:column; gap:1px;">
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第一章 营业执照与资质</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第二章 资格声明书</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第三章 承诺函与承诺书</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:8px 9px; border-radius:8px; background:#eff6ff; border:1px solid #dbeafe; font-size:12.5px; font-weight:700; color:#1e40af;"><span>💰</span>第五·六章 报价表 <span style="margin-left:auto; font-size:9px; background:#dbeafe; padding:1px 6px; border-radius:999px;">测算中</span></div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第七章 需求偏离表</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第八章 业绩与团队</div>
+                <div style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; font-size:12.5px; color:#64748b;"><span style="color:#059669;">✓</span>第九章 服务方案</div>
+              </div>
+            </div>
+            <div style="flex:1; min-width:0; background:#eef1f6; overflow:auto; padding:28px 30px;">
+              <div style="max-width:780px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 14px 44px -16px rgba(15,23,42,.22); border:1px solid #e6eaf1; padding:46px 50px; font-family:'Noto Serif SC',serif;">
+                <h2 style="font-size:18px; font-weight:700; margin:0 0 16px; text-align:center;">第五章　开标一览表</h2>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 22px; margin-bottom:30px; font-family:'Inter',sans-serif;">
+                  <div style="border-bottom:1px dashed #e2e8f0; padding-bottom:7px;"><div style="font-size:10px; color:#94a3b8;">投标总价（大写）</div><div style="font-size:13px; font-weight:700; color:#0f172a;">贰拾陆万玖仟捌佰贰拾元整</div></div>
+                  <div style="border-bottom:1px dashed #e2e8f0; padding-bottom:7px;"><div style="font-size:10px; color:#94a3b8;">投标总价（小写）</div><div style="font-size:13px; font-weight:700; color:#0f172a;">¥269,820.00</div></div>
+                  <div style="border-bottom:1px dashed #e2e8f0; padding-bottom:7px;"><div style="font-size:10px; color:#94a3b8;">预算利用率</div><div style="font-size:13px; font-weight:700; color:#be123c;">99.93%</div></div>
+                  <div style="border-bottom:1px dashed #e2e8f0; padding-bottom:7px;"><div style="font-size:10px; color:#94a3b8;">投标保证金</div><div style="font-size:13px; font-weight:700; color:#0f172a;">¥5,400.00 已缴</div></div>
+                </div>
+                <h2 style="font-size:18px; font-weight:700; margin:0 0 14px; text-align:center;">第六章　分项报价表</h2>
+                <table style="width:100%; border-collapse:collapse; font-family:'Inter',sans-serif; font-size:11.5px;">
+                  <thead><tr style="border-bottom:2px solid #e2e8f0; color:#64748b;"><th style="text-align:left; padding:7px 6px; font-weight:600;">检测分项</th><th style="text-align:center; padding:7px 6px; font-weight:600;">数量</th><th style="text-align:right; padding:7px 6px; font-weight:600;">单价</th><th style="text-align:right; padding:7px 6px; font-weight:600;">小计</th></tr></thead>
+                  <tbody style="color:#334155;">
+                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:8px 6px;">精密移液器校准（10/20/50/100ul）</td><td style="text-align:center;">200</td><td style="text-align:right; font-variant-numeric:tabular-nums;">¥120</td><td style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">¥24,000</td></tr>
+                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:8px 6px;">医用高频电刀校准与安全检测</td><td style="text-align:center;">35</td><td style="text-align:right;">¥800</td><td style="text-align:right; font-weight:700;">¥28,000</td></tr>
+                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:8px 6px;">多参数监护仪 / 脉搏血氧仪溯源</td><td style="text-align:center;">180</td><td style="text-align:right;">¥300</td><td style="text-align:right; font-weight:700;">¥54,000</td></tr>
+                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:8px 6px;">放射 / 牙科 X 射线设备检测与防护评价</td><td style="text-align:center;">12</td><td style="text-align:right;">¥8,000</td><td style="text-align:right; font-weight:700;">¥96,000</td></tr>
+                    <tr><td style="padding:8px 6px;">灭菌器 / 离心机等物理检测</td><td style="text-align:center;">62</td><td style="text-align:right;">¥1,093.87</td><td style="text-align:right; font-weight:700;">¥67,820</td></tr>
+                  </tbody>
+                  <tfoot><tr style="border-top:2px solid #e2e8f0;"><td colspan="3" style="padding:9px 6px; text-align:right; font-weight:700; color:#64748b;">投标总价合计</td><td style="text-align:right; padding:9px 6px; font-weight:800; color:#1e40af; font-size:13px;">¥269,820</td></tr></tfoot>
+                </table>
+                <div style="margin-top:24px; border:1px solid #fecdd3; background:#fff5f6; border-radius:12px; padding:14px 16px; font-family:'Inter',sans-serif;">
+                  <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:7px;"><span style="color:#64748b;">报价 ¥269,820 / 限价 ¥270,000 · 尾差 ¥180</span><span style="color:#be123c; font-weight:800;">限价利用率 99.93%</span></div>
+                  <div style="height:8px; border-radius:999px; background:#fee2e2; overflow:hidden;"><div style="width:99.93%; height:100%; background:#be123c; animation:softpulse 1.6s infinite;"></div></div>
+                  <div style="margin-top:10px; font-size:11px; color:#be123c; line-height:1.55;"><b>⚠️ 顶格高危提示：</b>综合评分法价格分权重低，顶格报价为最大化收益策略；分项加总与投标函大写金额已绝对钩稽（0 元尾差判定通过）。</div>
+                </div>
+              </div>
+            </div>
+            <div style="width:322px; flex-shrink:0; border-left:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:18px 16px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;"><div style="width:28px;height:28px;border-radius:9px;background:#1e40af;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;">🤖</div><span style="font-size:14px; font-weight:800;">编写 Copilot</span></div>
+              <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:13px; padding:14px; margin-bottom:14px;">
+                <div style="font-size:12px; font-weight:700; color:#1e40af; margin-bottom:8px;">阶段 7 · 智能测算逻辑</div>
+                <p style="font-size:11.5px; color:#3b60c4; line-height:1.6; margin:0;">价格分权重仅 10%，顶格报价争取满分技术池下最大化收益。已按限价空间反推分项单价，加总与大写金额钩稽。</p>
+              </div>
+              <div style="background:#fff; border:1px solid #e6eaf1; border-radius:13px; padding:14px; margin-bottom:16px; display:flex; flex-direction:column; gap:9px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">投标总价</span><b style="color:#0f172a;">¥269,820</b></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">最高限价</span><b style="color:#0f172a;">¥270,000</b></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">利用率</span><b style="color:#be123c;">99.93%</b></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">勾稽尾差</span><b style="color:#047857;">¥0.00</b></div>
+              </div>
+              <button style="width:100%; padding:12px; border:none; border-radius:11px; background:#1e40af; color:#fff; font-size:13.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px -8px rgba(30,64,175,.6); margin-bottom:9px;">确认报价 · 进入自检 →</button>
+              <button style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:11px; background:#fff; color:#475569; font-size:12.5px; font-weight:600; cursor:pointer;">上传报价精算底单校准</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P5 合规自检 ==================== -->
+    <div id="p5" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P5</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">合规自检 · 防废标（阶段 8）</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">自检报告以指标 + 红线清单文档呈现；唯一存疑项（业绩口径）以正文旁批注等待决断，Copilot 汇总放行。</p></div></div>
+      <div style="width:1440px; height:940px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+          <div style="height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div><div style="font-size:13.5px; font-weight:700;">投标文件.docx</div><div style="font-size:10.5px; color:#94a3b8;">阶段 8 · 防废标红线自检</div></div>
+            <span style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:#64748b;"><span style="width:6px;height:6px;border-radius:50%;background:#059669;"></span>AI 自动保存 · 阶段 8/9</span>
+          </div>
+          <div style="flex:1; display:flex; min-height:0;">
+            <div style="width:262px; flex-shrink:0; border-right:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:16px 14px;">
+              <div style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">🛡️ 自检项</div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#ecfdf5; font-size:12px; color:#047857; font-weight:600;">✅ 报价 ≤ 限价</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#ecfdf5; font-size:12px; color:#047857; font-weight:600;">✅ 索引/偏离表无空白</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#ecfdf5; font-size:12px; color:#047857; font-weight:600;">✅ 未原文照抄</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#ecfdf5; font-size:12px; color:#047857; font-weight:600;">✅ ★ 核心条款兜底</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#ecfdf5; font-size:12px; color:#047857; font-weight:600;">✅ 分项勾稽一致</div>
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#fffbeb; font-size:12px; color:#b45309; font-weight:600;">⚠️ 业绩口径待决断</div>
+              </div>
+            </div>
+            <div style="flex:1; min-width:0; background:#eef1f6; overflow:auto; padding:28px 30px;">
+              <div style="max-width:840px; margin:0 auto; display:flex; gap:16px; align-items:flex-start;">
+                <div style="flex:1; min-width:0; background:#fff; border-radius:8px; box-shadow:0 14px 44px -16px rgba(15,23,42,.22); border:1px solid #e6eaf1; padding:40px 44px;">
+                  <h2 style="font-size:17px; font-weight:800; margin:0 0 4px;">🛡️ 防废标红线 · 一致性合规自检报告</h2>
+                  <p style="font-size:12px; color:#94a3b8; margin:0 0 20px;">全册 9 章已成稿 · 导出前自动比对招标要求</p>
+                  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:22px;">
+                    <div style="border:1px solid #a7f3d0; border-radius:12px; padding:13px;"><div style="font-size:10px; color:#047857; font-weight:600;">要求覆盖率</div><div style="font-size:21px; font-weight:800; color:#047857; margin-top:3px;">27/27</div></div>
+                    <div style="border:1px solid #a7f3d0; border-radius:12px; padding:13px;"><div style="font-size:10px; color:#047857; font-weight:600;">漏响应</div><div style="font-size:21px; font-weight:800; color:#047857; margin-top:3px;">0</div></div>
+                    <div style="border:1px solid #a7f3d0; border-radius:12px; padding:13px;"><div style="font-size:10px; color:#047857; font-weight:600;">废标风险</div><div style="font-size:21px; font-weight:800; color:#047857; margin-top:3px;">0</div></div>
+                    <div style="border:1px solid #fde68a; border-radius:12px; padding:13px;"><div style="font-size:10px; color:#b45309; font-weight:600;">待决断</div><div style="font-size:21px; font-weight:800; color:#b45309; margin-top:3px;">1</div></div>
+                  </div>
+                  <div style="display:flex; flex-direction:column;">
+                    <div style="display:flex; gap:11px; padding:12px 0; border-bottom:1px solid #f1f5f9;"><span style="color:#059669;">✅</span><div style="flex:1;"><div style="font-size:12.5px; font-weight:600; color:#334155;">投标报价低于或等于最高限价</div><div style="font-size:11px; color:#94a3b8; margin-top:2px;">报价 269,820 ≤ 限价 270,000（符合）</div></div></div>
+                    <div style="display:flex; gap:11px; padding:12px 0; border-bottom:1px solid #f1f5f9;"><span style="color:#059669;">✅</span><div style="flex:1;"><div style="font-size:12.5px; font-weight:600; color:#334155;">四张索引表与偏离表逐条应答无空白</div><div style="font-size:11px; color:#94a3b8; margin-top:2px;">已完整填写索引表及商务技术偏离表</div></div></div>
+                    <div style="display:flex; gap:11px; padding:12px 0; border-bottom:1px solid #f1f5f9;"><span style="color:#059669;">✅</span><div style="flex:1;"><div style="font-size:12.5px; font-weight:600; color:#334155;">技术条款响应改写，未原文照抄</div><div style="font-size:11px; color:#94a3b8; margin-top:2px;">12 项技术参数个性化响应改写（避雷照抄）</div></div></div>
+                    <div style="display:flex; gap:11px; padding:12px 0; border-bottom:1px solid #f1f5f9;"><span style="color:#059669;">✅</span><div style="flex:1;"><div style="font-size:12.5px; font-weight:600; color:#334155;">★ 实质性核心条款多重应答兜底</div><div style="font-size:11px; color:#94a3b8; margin-top:2px;">★ 强检协助条款在偏离表与承诺函双重保障</div></div></div>
+                    <div style="display:flex; gap:11px; padding:12px 0;"><span style="color:#059669;">✅</span><div style="flex:1;"><div style="font-size:12.5px; font-weight:600; color:#334155;">分项报价单独填报且价格勾稽一致</div><div style="font-size:11px; color:#94a3b8; margin-top:2px;">加总 269,820 元与开标一览表完全一致</div></div></div>
+                  </div>
+                </div>
+                <div style="width:224px; flex-shrink:0;">
+                  <div style="background:#fff; border:1px solid #fde68a; border-radius:12px; box-shadow:0 8px 22px -14px rgba(15,23,42,.2); padding:13px 14px;">
+                    <div style="display:flex; align-items:center; gap:7px; margin-bottom:7px;"><div style="width:22px;height:22px;border-radius:50%;background:#1e40af;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">AI</div><span style="font-size:11px; font-weight:700; color:#334155;">AI 审阅</span><span style="margin-left:auto; font-size:9.5px; color:#b45309; background:#fffbeb; padding:1px 6px; border-radius:999px;">待决断</span></div>
+                    <p style="font-size:11.5px; line-height:1.6; color:#475569; margin:0 0 10px;">业绩口径：招标要求「京津冀」，现为北京 3 例。可能被主观扣 1–2 分。</p>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                      <button style="width:100%; padding:7px; border:none; border-radius:8px; background:#1e40af; color:#fff; font-size:11.5px; font-weight:700; cursor:pointer;">补充津冀业绩</button>
+                      <button style="width:100%; padding:7px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#64748b; font-size:11.5px; font-weight:600; cursor:pointer;">接受轻微扣分</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="width:322px; flex-shrink:0; border-left:1px solid #e2e8f0; background:#fbfcfe; overflow:auto; padding:18px 16px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;"><div style="width:28px;height:28px;border-radius:9px;background:#1e40af;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;">🤖</div><span style="font-size:14px; font-weight:800;">编写 Copilot</span></div>
+              <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:13px; padding:14px; margin-bottom:14px;">
+                <div style="font-size:12.5px; font-weight:800; color:#047857; margin-bottom:6px;">✅ 硬性红线全部通过</div>
+                <p style="font-size:11.5px; color:#047857; line-height:1.6; margin:0;">无漏响应、无废标风险、无负偏离。仅 1 项加分口径需你决断。</p>
+              </div>
+              <div style="background:#fff; border:1px solid #e6eaf1; border-radius:13px; padding:14px; margin-bottom:16px; display:flex; flex-direction:column; gap:9px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">硬性红线</span><b style="color:#047857;">5/5 通过</b></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">加分口径</span><b style="color:#b45309;">1 待决断</b></div>
+                <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:#64748b;">预估技术分</span><b style="color:#1e40af;">88–90 / 90</b></div>
+              </div>
+              <button style="width:100%; padding:12px; border:none; border-radius:11px; background:#1e40af; color:#fff; font-size:13.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px -8px rgba(30,64,175,.6); margin-bottom:9px;">通过并进入导出 →</button>
+              <button style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:11px; background:#fff; color:#475569; font-size:12.5px; font-weight:600; cursor:pointer;">退回修改</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P6 导出打包 ==================== -->
+    <div id="p6" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#1e40af;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P6</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">导出打包（阶段 9）</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">按招标规范生成分册方案：目录 / 索引表 / 签章页 / 单独密封逐项确认，支持打包 ZIP 与命名规则，一键生成 docx。</p></div></div>
+      <div style="width:1440px; height:900px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;font-weight:600;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0; background:#f6f8fb;">
+          <div style="height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 26px; border-bottom:1px solid #e2e8f0; background:#fff;">
+            <div style="display:flex; align-items:center; gap:10px;"><span style="font-size:15px; font-weight:800;">导出中心</span><span style="font-size:10px; font-weight:700; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; padding:2px 8px; border-radius:999px;">✓ 全部把关已通过</span></div>
+            <span style="font-size:11.5px; color:#94a3b8;">阶段 9 / 9</span>
+          </div>
+          <div style="flex:1; overflow:auto; padding:34px 44px; display:flex; gap:32px; align-items:flex-start;">
+            <div style="flex:1; max-width:640px;">
+              <h2 style="font-size:20px; font-weight:800; margin:0 0 4px;">分册导出方案</h2>
+              <p style="font-size:12.5px; color:#64748b; margin:0 0 20px;">本项目为单分册。多分册项目将并列显示，可对报价册等单独密封、整体打包 ZIP。</p>
+              <div style="background:#fff; border:1px solid #dbeafe; border-radius:16px; padding:20px 22px; box-shadow:0 10px 26px -18px rgba(15,23,42,.3); margin-bottom:14px;">
+                <div style="display:flex; align-items:flex-start; gap:14px;">
+                  <div style="width:46px;height:56px;border-radius:6px;background:#eff6ff;border:1px solid #dbeafe;display:flex;align-items:center;justify-content:center;font-size:22px; flex-shrink:0;">📘</div>
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:15px; font-weight:800; color:#0f172a;">投标文件（响应分册）</div>
+                    <div style="font-size:11.5px; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:2px;">迈创精准_北京口腔医院_投标文件.docx</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:7px; margin-top:12px;">
+                      <span style="font-size:11px; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; padding:3px 9px; border-radius:999px;">✓ 生成目录</span>
+                      <span style="font-size:11px; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; padding:3px 9px; border-radius:999px;">✓ 索引表</span>
+                      <span style="font-size:11px; color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; padding:3px 9px; border-radius:999px;">✓ 签章页</span>
+                      <span style="font-size:11px; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 9px; border-radius:999px;">单独密封：否</span>
+                      <span style="font-size:11px; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 9px; border-radius:999px;">9 章 · 27 项要求全覆盖</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:#fff; border:1px solid #e6eaf1; border-radius:16px; padding:18px 22px; display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;"><div><div style="font-size:12.5px; font-weight:700; color:#334155;">打包为 ZIP</div><div style="font-size:11px; color:#94a3b8;">多分册时附各册与佐证清单</div></div><div style="width:38px;height:22px;border-radius:999px;background:#cbd5e1;position:relative;"><div style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;"></div></div></div>
+                <div style="height:1px; background:#f1f5f9;"></div>
+                <div style="display:flex; align-items:center; justify-content:space-between;"><div><div style="font-size:12.5px; font-weight:700; color:#334155;">命名规则</div><div style="font-size:11px; color:#94a3b8;">公司_项目_分册名</div></div><span style="font-size:11px; color:#1e40af; font-family:'JetBrains Mono',monospace; background:#eff6ff; border:1px solid #dbeafe; padding:4px 10px; border-radius:8px;">{公司}_{项目}_{分册}</span></div>
+              </div>
+            </div>
+            <div style="width:360px; flex-shrink:0; background:#fff; border:1px solid #e6eaf1; border-radius:16px; padding:22px; box-shadow:0 10px 26px -18px rgba(15,23,42,.3);">
+              <div style="font-size:13px; font-weight:800; color:#0f172a; margin-bottom:14px;">导出前终检清单</div>
+              <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:9px; font-size:12px; color:#334155;"><span style="color:#059669;">✅</span>27 / 27 要求全覆盖，无漏响应</div>
+                <div style="display:flex; align-items:center; gap:9px; font-size:12px; color:#334155;"><span style="color:#059669;">✅</span>废标风险 0，负偏离 0</div>
+                <div style="display:flex; align-items:center; gap:9px; font-size:12px; color:#334155;"><span style="color:#059669;">✅</span>报价勾稽一致，尾差 ¥0.00</div>
+                <div style="display:flex; align-items:center; gap:9px; font-size:12px; color:#334155;"><span style="color:#059669;">✅</span>业绩口径已决断：补充津冀业绩</div>
+              </div>
+              <button style="width:100%; padding:14px; border:none; border-radius:12px; background:#1e40af; color:#fff; font-size:14.5px; font-weight:800; cursor:pointer; box-shadow:0 10px 24px -8px rgba(30,64,175,.6); margin-bottom:10px;">🏆 生成并下载 bid.docx</button>
+              <button style="width:100%; padding:11px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; color:#475569; font-size:12.5px; font-weight:600; cursor:pointer;">下载前预览全文</button>
+              <p style="font-size:10.5px; color:#94a3b8; text-align:center; margin:14px 0 0; line-height:1.5;">服务端产物存在时优先下载 bid.docx；<br>浏览器草稿预览作为兜底。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== P7 企业资料库 ==================== -->
+    <div id="p7" style="width:1440px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; align-items:center; gap:13px;"><span style="width:40px;height:40px;border-radius:11px;background:#047857;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">P7</span><div><h3 style="margin:0;font-size:18px;font-weight:800;">企业资料库 · 独立菜单页</h3><p style="margin:2px 0 0;font-size:13px;color:#64748b;">跨项目复用的管理型内容，升为一级菜单。5 大底座卡片化：命中本项目 / 可用 / 缺失待补充 / 口径警告一目了然，支持搜索、筛选、上传。</p></div></div>
+      <div style="width:1440px; height:940px; border-radius:18px; overflow:hidden; border:1px solid #dfe4ec; box-shadow:0 24px 60px -24px rgba(15,23,42,.28); background:#fff; display:flex;">
+        <div style="width:64px; flex-shrink:0; background:#0f172a; display:flex; flex-direction:column; align-items:center; padding:14px 0;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px;">◆</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">📝</span><span style="font-size:8.5px;">编辑</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;background:#1e40af;color:#fff;margin-bottom:6px;cursor:pointer;"><span style="font-size:16px;">🗄️</span><span style="font-size:8.5px;font-weight:600;">资料库</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;padding:8px 0;border-radius:11px;color:#94a3b8;cursor:pointer;"><span style="font-size:16px;">🕓</span><span style="font-size:8.5px;">项目</span></div>
+          <div style="margin-top:auto;width:32px;height:32px;border-radius:50%;background:#334155;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">迈</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; min-width:0; background:#f6f8fb;">
+          <!-- header -->
+          <div style="padding:18px 28px 0; background:#fff; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:9px;"><span style="font-size:19px; font-weight:800; color:#0f172a;">🗄️ 迈创企业资料库</span><span style="font-size:11px; font-weight:700; color:#64748b; background:#eef2f7; padding:3px 9px; border-radius:999px;">5 大底座 · 共 42 项</span></div>
+                <p style="font-size:12px; color:#94a3b8; margin:5px 0 0;">编写标书时自动检索匹配；缺失要件会提示补充，避免废标。</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:7px; width:260px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;"><span style="color:#94a3b8;font-size:13px;">🔍</span><span style="font-size:12px; color:#94a3b8;">搜索资质 / 人员 / 业绩…</span></div>
+                <button style="padding:9px 16px; border:none; border-radius:10px; background:#1e40af; color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">＋ 上传资料</button>
+              </div>
+            </div>
+            <div style="display:flex; gap:4px;">
+              <span style="font-size:12px; font-weight:700; color:#1e40af; padding:9px 14px; border-bottom:2px solid #1e40af;">全部</span>
+              <span style="font-size:12px; color:#64748b; padding:9px 14px; border-bottom:2px solid transparent;">📜 资质 3</span>
+              <span style="font-size:12px; color:#64748b; padding:9px 14px; border-bottom:2px solid transparent;">👤 人员 3</span>
+              <span style="font-size:12px; color:#64748b; padding:9px 14px; border-bottom:2px solid transparent;">🔬 仪器 1</span>
+              <span style="font-size:12px; color:#64748b; padding:9px 14px; border-bottom:2px solid transparent;">🏆 业绩 2</span>
+              <span style="font-size:12px; color:#64748b; padding:9px 14px; border-bottom:2px solid transparent;">📝 模板 1</span>
+            </div>
+          </div>
+          <!-- body -->
+          <div style="flex:1; overflow:auto; padding:24px 28px; display:flex; flex-direction:column; gap:26px;">
+            <!-- qual -->
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:#334155;">📜 企业核心资质库</span><span style="font-size:11px; color:#94a3b8;">3 项 · 2 项已用于本项目</span></div>
+              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+                <div style="background:#fff; border:1px solid #dbeafe; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">🏅</span><span style="font-size:10px; font-weight:700; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:2px 8px; border-radius:999px;">本项目已用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">CNAS 认可证书</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">编号 L48532 · 含计量校准范围 · 满足实验室认可 5 分</div>
+                </div>
+                <div style="background:#fff; border:1px solid #dbeafe; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">🏅</span><span style="font-size:10px; font-weight:700; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:2px 8px; border-radius:999px;">本项目已用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">CMA 计量认证资质</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">含认可能力附表 · 200 余项精密器械计量资质</div>
+                </div>
+                <div style="background:#fff; border:1px solid #fde68a; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px; opacity:.5;">📻</span><span style="font-size:10px; font-weight:700; color:#b45309; background:#fffbeb; border:1px solid #fde68a; padding:2px 8px; border-radius:999px;">缺失 · 需补充</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">放射卫生评价 / 检测资质（乙级）</div>
+                  <div style="font-size:11px; color:#b45309; margin-top:4px; line-height:1.5;">放射类 X 射线设备检测分项建议提供，未在库</div>
+                </div>
+              </div>
+            </div>
+            <!-- people -->
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:#334155;">👤 专业团队人员库</span><span style="font-size:11px; color:#94a3b8;">3 项 · 含 1 项待补社保</span></div>
+              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+                <div style="background:#fff; border:1px solid #e6eaf1; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">👤</span><span style="font-size:10px; font-weight:700; color:#64748b; background:#f1f5f9; padding:2px 8px; border-radius:999px;">可用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">吴建刚 · 一级注册计量师</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">注册证 + 5 年在保社保证明</div>
+                </div>
+                <div style="background:#fff; border:1px solid #dbeafe; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">👤</span><span style="font-size:10px; font-weight:700; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:2px 8px; border-radius:999px;">本项目已用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">武文君 · 二级注册计量师</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">拟任技术负责人 · 满足 ★ 13 分强制项</div>
+                </div>
+                <div style="background:#fff; border:1px solid #fde68a; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px; opacity:.5;">🗂️</span><span style="font-size:10px; font-weight:700; color:#b45309; background:#fffbeb; border:1px solid #fde68a; padding:2px 8px; border-radius:999px;">缺失 · 需补充</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">武文君 近 3 月在册社保</div>
+                  <div style="font-size:11px; color:#b45309; margin-top:4px; line-height:1.5;">第 8 章强制要件，严禁挂靠/代缴，上传后自动比对</div>
+                </div>
+              </div>
+            </div>
+            <!-- device + record + template row -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:26px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:#334155;">🔬 测量仪器与标准器库</span></div>
+                <div style="background:#fff; border:1px solid #e6eaf1; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">🔬</span><span style="font-size:10px; font-weight:700; color:#64748b; background:#f1f5f9; padding:2px 8px; border-radius:999px;">可用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">计量标准器台账 · 134 项</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">移液器校准器 / 黑体炉 / 数字多功能计量标准器，含溯源校准证书</div>
+                </div>
+              </div>
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:#334155;">📝 标书专项模板库</span></div>
+                <div style="background:#fff; border:1px solid #dbeafe; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">📝</span><span style="font-size:10px; font-weight:700; color:#1e40af; background:#eff6ff; border:1px solid #dbeafe; padding:2px 8px; border-radius:999px;">本项目已用</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">检测服务方案 / 质控 / 应急预案模板</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">医疗设备检测通用模板，供第九章自撰区改写复用</div>
+                </div>
+              </div>
+            </div>
+            <!-- record -->
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:#334155;">🏆 历史同类业绩库</span><span style="font-size:11px; color:#94a3b8;">2 项 · 含口径警告</span></div>
+              <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px;">
+                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px;">🏆</span><span style="font-size:10px; font-weight:700; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:2px 8px; border-radius:999px;">⚠️ 口径警告</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">北京地区同类业绩 3 例</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">305 医院 / 武警北京总队 / 空军特色医学中心。招标要求「京津冀」，命中为「北京」，口径置信度 62% 需人工决断。</div>
+                </div>
+                <div style="background:#fff; border:1px dashed #cbd5e1; border-radius:14px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;"><span style="font-size:22px; opacity:.5;">➕</span><span style="font-size:10px; font-weight:700; color:#64748b; background:#f1f5f9; padding:2px 8px; border-radius:999px;">建议补充</span></div>
+                  <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.4;">天津 / 河北 三甲同类业绩</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:4px; line-height:1.5;">补齐后业绩加分可争取满分（每例 3 分，最高 10 分）</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -31,6 +31,6 @@ describe('AgentStream', () => {
     const mockEngine = {} as any;
     const playingState = { ...dummyState, status: 'playing' as const };
     render(<AgentStream state={playingState} engine={mockEngine} scenario={kqyy} />);
-    expect(screen.getByText('AI 正在自主研判并组装材料中...')).toBeInTheDocument();
+    expect(screen.getByText(/AI 正在自主研判.*合规组装材料中/)).toBeInTheDocument();
   });
 });

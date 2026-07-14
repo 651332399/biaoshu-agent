@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
-import type { DocBlockData } from '../engine/types';
+import type { DocBlockData, EvidenceChipData } from '../engine/demo/types';
 import { Typewriter } from './Typewriter';
+import { EvidenceChip } from './editor/EvidenceChip';
+import { EvidenceConfirmBar } from './editor/EvidenceConfirmBar';
 
 interface DocBlockProps {
   key?: string;
@@ -10,9 +12,36 @@ interface DocBlockProps {
   locked: boolean;
   onLock: () => void;
   onEditSave: (newProse: string) => void;
+  chips?: EvidenceChipData[];
+  onChipClick?: (materialId: string) => void;
 }
 
-export function DocBlock({ block, instant, locked, onLock, onEditSave }: DocBlockProps) {
+/** 把正文按 chip.text 切片,命中处替换成 EvidenceChip。无 chip 时返回原文。 */
+function renderWithChips(
+  text: string,
+  chips: EvidenceChipData[],
+  onChipClick?: (id: string) => void,
+): ReactNode {
+  if (chips.length === 0) return text;
+  const hits: { start: number; end: number; chip: EvidenceChipData }[] = [];
+  for (const chip of chips) {
+    const idx = text.indexOf(chip.text);
+    if (idx >= 0) hits.push({ start: idx, end: idx + chip.text.length, chip });
+  }
+  hits.sort((a, b) => a.start - b.start);
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  hits.forEach((hit, i) => {
+    if (hit.start < cursor) return; // 跳过重叠
+    if (hit.start > cursor) parts.push(<Fragment key={`t${i}`}>{text.slice(cursor, hit.start)}</Fragment>);
+    parts.push(<EvidenceChip key={`c${i}`} chip={hit.chip} onClick={onChipClick} />);
+    cursor = hit.end;
+  });
+  if (cursor < text.length) parts.push(<Fragment key="tail">{text.slice(cursor)}</Fragment>);
+  return parts;
+}
+
+export function DocBlock({ block, instant, locked, onLock, onEditSave, chips = [], onChipClick }: DocBlockProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(block.prose ?? '');
 
@@ -74,13 +103,19 @@ export function DocBlock({ block, instant, locked, onLock, onEditSave }: DocBloc
 
       {/* Render prose block */}
       {block.render === 'prose' && (
-        <div className="text-sm text-gray-700 leading-relaxed font-sans">
+        <div className="text-[15px] text-gray-800 leading-[1.9] doc-serif">
           {isEditing ? (
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full min-h-[100px] p-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[var(--accent)] focus:outline-none text-sm leading-relaxed"
+              className="w-full min-h-[100px] p-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[var(--accent)] focus:outline-none text-sm leading-relaxed font-sans"
             />
+          ) : chips.length > 0 ? (
+            // 有行内证据芯片时直接渲染富文本(跳过打字机,芯片需为真实 DOM 节点)
+            <>
+              <p className="whitespace-pre-wrap">{renderWithChips(block.prose ?? '', chips, onChipClick)}</p>
+              <EvidenceConfirmBar chips={chips} />
+            </>
           ) : (
             <Typewriter text={block.prose ?? ''} instant={instant} />
           )}

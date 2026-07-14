@@ -1,5 +1,5 @@
 import { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun } from 'docx';
-import type { Scenario, DocBlockData } from '../engine/types';
+import type { Scenario, DocBlockData } from '../engine/demo/types';
 
 function blockToChildren(block: DocBlockData): (Paragraph | Table)[] {
   const out: (Paragraph | Table)[] = [

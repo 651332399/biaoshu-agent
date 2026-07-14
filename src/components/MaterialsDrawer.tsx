@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Material, MaterialCategory, Focus } from '../engine/types';
+import type { Material, MaterialCategory, Focus } from '../engine/demo/types';
 
 interface Props {
   materials: Material[];

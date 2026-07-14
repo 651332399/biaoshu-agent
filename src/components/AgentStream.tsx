@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Paperclip, FileText, Sparkles, X, Image, Table, ShieldCheck, HelpCircle, AlertTriangle, ChevronDown, ChevronUp, UploadCloud, CheckCircle2, ShieldAlert } from 'lucide-react';
 import type { EngineState, ScenarioEngine } from '../engine/ScenarioEngine';
-import type { Scenario } from '../engine/types';
+import type { WorkspaceEngine } from '../engine/sources';
+import type { Scenario } from '../engine/demo/types';
 import { DecisionCard } from './DecisionCard';
 import { STAGES } from './PhaseStepper';
 
 interface Props {
   state: EngineState;
-  engine: ScenarioEngine;
+  engine: ScenarioEngine | WorkspaceEngine;
   scenario: Scenario;
 }
 
@@ -31,6 +32,19 @@ export function AgentStream({ state, engine, scenario }: Props) {
   const [inputText, setInputText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<SimulatedFile[]>([]);
   const [showFileDropdown, setShowFileDropdown] = useState(false);
+  const checkpointArtifact = (() => {
+    const cardId = state.pendingCard?.id;
+    if (cardId === 'confirm-2' && state.backendOutline) {
+      return { label: '大纲 outline.json', value: state.backendOutline };
+    }
+    if (cardId === 'confirm-4' && state.backendExportPlan) {
+      return { label: '分册导出方案 export_plan.json', value: state.backendExportPlan };
+    }
+    if (cardId === 'confirm-3' && state.backendReport) {
+      return { label: '合规报告 report.json', value: state.backendReport };
+    }
+    return undefined;
+  })();
 
   // Auto-scroll to the bottom of the log list when new logs or states occur
   useEffect(() => {
@@ -204,7 +218,9 @@ export function AgentStream({ state, engine, scenario }: Props) {
             ) : (
               <DecisionCard
                 card={state.pendingCard}
-                onConfirm={() => engine.confirmCheckpoint()}
+                requirements={state.pendingCard.id === 'confirm-1' ? state.backendRequirements : []}
+                artifact={checkpointArtifact}
+                onConfirm={(artifact, confirmedFields) => engine.confirmCheckpoint(artifact, confirmedFields)}
                 onChoose={(i) => engine.chooseOption(i)}
               />
             )}
