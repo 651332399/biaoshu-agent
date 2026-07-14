@@ -166,6 +166,9 @@ describe('ExportDialog', () => {
     await waitFor(() => expect(open).toHaveBeenCalledWith(
       '/api/projects/p1/artifacts/export/fresh.zip', '_blank', 'noopener,noreferrer',
     ));
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ blocks: scenario.blocks });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      blocks: scenario.blocks,
+      dirty_block_ids: [],
+    });
   });
 });

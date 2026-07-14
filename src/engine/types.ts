@@ -7,6 +7,8 @@ export interface BackendRequirement {
   page: number | null;
   mandatory: boolean;
   score_weight: number | null;
+  summary?: string | null;
+  needs_manual_screenshot?: boolean;
 }
 
 export interface BackendSection {

@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react';
-import { saveAs } from 'file-saver';
-import { buildDocx } from '../lib/exportDocx';
 import { regenerateProjectExport } from '../lib/api';
 import { exportArtifactLabel, getDisplayVolumes } from '../lib/exportPlanView';
 import type { BackendExportPlan, BackendOutline } from '../engine/types';
@@ -11,6 +9,7 @@ interface Props {
   backendExportPlan?: BackendExportPlan | null;
   backendOutline?: BackendOutline | null;
   serverDocxUrl?: string | null;
+  dirtyBlockIds?: string[];
   onConfirm: () => void;
 }
 
@@ -26,6 +25,7 @@ export function ExportDialog({
   backendExportPlan,
   backendOutline,
   serverDocxUrl,
+  dirtyBlockIds = [],
   onConfirm,
 }: Props) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -47,18 +47,16 @@ export function ExportDialog({
 
   const handleDownload = async () => {
     try {
-      if (serverDocxUrl) {
-        const projectId = new URLSearchParams(window.location.search).get('project_id');
-        if (!projectId) {
-          throw new Error('当前页面缺少 project_id，无法确认编辑内容已写入导出文件');
-        }
-        setIsExporting(true);
-        const exported = await regenerateProjectExport(projectId, scenario.blocks);
-        window.open(exported.url, '_blank', 'noopener,noreferrer');
-        return;
+      if (!serverDocxUrl) {
+        throw new Error('服务端尚未生成可下载的导出文件，请等待导出完成或重新导出后再试');
       }
-      const blob = await buildDocx(scenario);
-      saveAs(blob, `${scenario.meta.项目名}-投标文件.docx`);
+      const projectId = new URLSearchParams(window.location.search).get('project_id');
+      if (!projectId) {
+        throw new Error('当前页面缺少 project_id，无法确认编辑内容已写入导出文件');
+      }
+      setIsExporting(true);
+      const exported = await regenerateProjectExport(projectId, scenario.blocks, dirtyBlockIds);
+      window.open(exported.url, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.error('Failed to generate docx', e);
       const message = e instanceof Error ? e.message : '未知错误';

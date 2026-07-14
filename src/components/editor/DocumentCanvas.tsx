@@ -95,6 +95,7 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
         backendExportPlan={state.backendExportPlan}
         backendOutline={state.backendOutline}
         serverDocxUrl={state.serverPackageUrl || state.serverDocxUrl}
+        dirtyBlockIds={[...documentStore.dirtyBlocks]}
         onConfirm={() => engine.confirmCheckpoint()}
       />
     );

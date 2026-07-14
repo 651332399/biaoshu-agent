@@ -133,20 +133,28 @@ export async function getProjectState(projectId: string): Promise<ProjectState> 
   return readResponse<ProjectState>(response);
 }
 
-export async function saveDocumentBlocks(projectId: string, blocks: DocBlockData[]) {
+export async function saveDocumentBlocks(
+  projectId: string,
+  blocks: DocBlockData[],
+  dirtyBlockIds?: string[],
+) {
   const response = await fetch(`/api/projects/${projectId}/document-blocks`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ blocks }),
+    body: JSON.stringify({ blocks, dirty_block_ids: dirtyBlockIds }),
   });
   return readResponse<{ status: string }>(response);
 }
 
-export async function regenerateProjectExport(projectId: string, blocks: DocBlockData[]) {
+export async function regenerateProjectExport(
+  projectId: string,
+  blocks: DocBlockData[],
+  dirtyBlockIds: string[] = [],
+) {
   const response = await fetch(`/api/projects/${projectId}/export`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ blocks }),
+    body: JSON.stringify({ blocks, dirty_block_ids: dirtyBlockIds }),
   });
   return readResponse<{ status: string; url: string }>(response);
 }

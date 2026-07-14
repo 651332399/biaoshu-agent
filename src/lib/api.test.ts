@@ -62,7 +62,7 @@ describe('api client', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/export', expect.objectContaining({
       method: 'POST',
-      body: JSON.stringify({ blocks }),
+      body: JSON.stringify({ blocks, dirty_block_ids: [] }),
     }));
   });
 });

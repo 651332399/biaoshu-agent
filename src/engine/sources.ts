@@ -103,8 +103,15 @@ function sectionDraftToDocBlocks(
         标题: docBlocks.length === 0 ? title : '',
         table: { headers: block.header, rows: block.rows },
       });
-    } else if (block.caption) {
-      proseBuffer.push(block.caption);
+    } else if (block.kind === 'image') {
+      flushProse();
+      docBlocks.push({
+        id: `${idPrefix}-${docBlocks.length}`,
+        chapterId,
+        render: 'attachment',
+        标题: docBlocks.length === 0 ? title : '',
+        attachment: { 名称: block.caption || '附件', materialId: block.asset_ref },
+      });
     }
   }
   flushProse();
@@ -549,11 +556,13 @@ export class LiveSource implements WorkspaceEngine {
     this.state.grownVolumes = this.scenario.volumes.map((volume) => volume.id);
   }
 
-  /** 章节定位优先级：事件 section_index > outline 标题匹配 > 追加序。到达顺序不可靠。 */
+  /** 章节定位优先级：事件序号 > section_id > 标题兼容旧产物 > 追加序。 */
   private resolveSectionIndex(draft: BackendSectionDraft, data?: Record<string, unknown>): number {
     const fromEvent = Number(data?.section_index);
     if (Number.isInteger(fromEvent) && fromEvent >= 1) return fromEvent;
     const chapters = this.scenario.volumes.flatMap((volume) => volume.chapters);
+    const bySectionId = chapters.findIndex((chapter) => chapter.id === draft.section_id);
+    if (bySectionId >= 0) return bySectionId + 1;
     const byTitle = chapters.findIndex((chapter) => chapter.标题 === draft.title);
     if (byTitle >= 0) return byTitle + 1;
     return this.scenario.blocks.length + 1;
