@@ -98,8 +98,8 @@ export interface BackendProjectMeta {
   服务周期?: string | null;
   限价: number | null;
   evidence?: string[];
-  evidence_by_field?: Partial<Record<'项目编号' | '采购人', string[]>>;
-  confirmed_fields?: ('项目编号' | '采购人')[];
+  evidence_by_field?: Partial<Record<'项目名' | '项目编号' | '采购人', string[]>>;
+  confirmed_fields?: ('项目名' | '项目编号' | '采购人')[];
 }
 
 export interface BackendVolumeSpec {

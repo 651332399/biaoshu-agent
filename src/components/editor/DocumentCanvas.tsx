@@ -118,6 +118,7 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
           writingBlockId={documentStore.writingBlockId}
           isStreaming={state.status === 'playing'}
           fileName={`${scenario.meta.项目名 || '投标文件'}.docx`}
+          saveError={documentStore.saveError}
           onBlocksChange={documentStore.replaceBlocks}
           onToggleLock={documentStore.toggleLock}
         />

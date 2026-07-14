@@ -10,6 +10,7 @@ interface DocumentStore {
   dirtyBlocks: Set<string>;
   writingBlockId: string | null;
   storageKey: string;
+  saveError: string | null;
   replaceBlocks(blocks: DocBlockData[], dirtyIds?: string[]): void;
   toggleLock(blockId: string): void;
 }
@@ -32,6 +33,7 @@ export function useDocumentStore(scenario: Scenario, state: EngineState): Docume
   const [blocks, setBlocks] = useState<DocBlockData[]>(() => loadBlocks(storageKey) ?? visibleBlocks);
   const [dirtyBlocks, setDirtyBlocks] = useState<Set<string>>(() => loadSet(storageKey, 'dirty'));
   const [lockedBlocks, setLockedBlocks] = useState<Set<string>>(() => loadSet(storageKey, 'locked'));
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // storageKey 真正变化（项目切换），说明上面的 state 是上一个项目遗留在内存里的，
   // 不能让 mergeBlocks 把它们当"用户手改内容"保留下去——改读新项目自己的缓存。
@@ -72,7 +74,12 @@ export function useDocumentStore(scenario: Scenario, state: EngineState): Docume
         locked: [...lockedBlocks],
       }));
       if (projectId && blocks.length > 0) {
-        void saveDocumentBlocks(projectId, blocks).catch(() => undefined);
+        void saveDocumentBlocks(projectId, blocks)
+          .then(() => setSaveError(null))
+          .catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : '正文保存失败';
+            setSaveError(`保存失败：${message}`);
+          });
       }
     }, 500);
     return () => window.clearTimeout(handle);
@@ -88,6 +95,7 @@ export function useDocumentStore(scenario: Scenario, state: EngineState): Docume
     dirtyBlocks,
     writingBlockId,
     storageKey,
+    saveError,
     replaceBlocks(nextBlocks, dirtyIds = []) {
       setBlocks(nextBlocks);
       if (dirtyIds.length) {

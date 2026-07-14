@@ -19,6 +19,15 @@ export default function App() {
     void engine.startWithFile?.(file);
   };
 
+  const handleOpenProject = (projectId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('project_id', projectId);
+    window.history.replaceState({}, '', url);
+    setHasStarted(true);
+    setView('editor');
+    void engine.restoreProject?.(projectId);
+  };
+
   // Restore an in-flight project from ?project_id
   useEffect(() => {
     const projectId = new URLSearchParams(window.location.search).get('project_id');
@@ -41,9 +50,9 @@ export default function App() {
           {view === 'library' ? (
             <MaterialsLibrary materials={scenario.materials} matched={state.matchedMaterials} />
           ) : view === 'projects' ? (
-            <ProjectsList onNew={() => { setHasStarted(false); setView('editor'); }} onOpen={() => setView('editor')} />
+            <ProjectsList onNew={() => { setHasStarted(false); setView('editor'); }} onOpen={handleOpenProject} />
           ) : !hasStarted ? (
-            <UploadIntro onStart={handleStartWorkspace} onOpenProject={() => setView('editor')} />
+            <UploadIntro onStart={handleStartWorkspace} onOpenProject={handleOpenProject} />
           ) : (
             <EditorWorkspace
               state={state}

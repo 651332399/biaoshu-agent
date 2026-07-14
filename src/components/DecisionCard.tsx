@@ -7,7 +7,7 @@ interface Props {
   card: Step;
   requirements?: BackendRequirement[];
   artifact?: { label: string; value: unknown };
-  onConfirm: (artifact?: unknown, confirmedFields?: ('项目编号' | '采购人')[]) => void;
+  onConfirm: (artifact?: unknown, confirmedFields?: ('项目名' | '项目编号' | '采购人')[]) => void;
   onChoose: (index: number) => void;
 }
 
@@ -36,8 +36,8 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
-  const [manualMeta, setManualMeta] = useState<Partial<Record<'项目编号' | '采购人', string>>>({});
-  const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目编号' | '采购人', boolean>>>({});
+  const [manualMeta, setManualMeta] = useState<Partial<Record<'项目名' | '项目编号' | '采购人', string>>>({});
+  const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目名' | '项目编号' | '采购人', boolean>>>({});
   const [candidateDecisions, setCandidateDecisions] = useState<Record<string, 'required' | 'excluded'>>({});
   const grouped = useMemo(() => {
     const order = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'];
@@ -61,7 +61,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const tenderSpec = isTenderSpecArtifact(artifact?.value) ? artifact.value : null;
   const exportPlan = tenderSpec?.export_plan ?? (isExportPlanArtifact(artifact?.value) ? artifact.value : null);
   const unverifiedMetaFields = tenderSpec
-    ? (['项目编号', '采购人'] as const).filter((field) => !tenderSpec.project_meta.evidence_by_field?.[field]?.length)
+    ? (['项目名', '项目编号', '采购人'] as const).filter((field) => !tenderSpec.project_meta.evidence_by_field?.[field]?.length)
     : [];
   const requiredFormKeys = new Set(
     tenderSpec?.export_plan.volumes.flatMap((volume) =>

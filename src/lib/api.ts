@@ -61,7 +61,7 @@ export async function confirmProject(
   artifact: unknown,
   action: 'approve' | 'edit' = 'edit',
   checkpoint = 1,
-  confirmedFields: ('项目编号' | '采购人')[] = [],
+  confirmedFields: ('项目名' | '项目编号' | '采购人')[] = [],
 ) {
   const body: Record<string, unknown> = {
     checkpoint,
@@ -113,6 +113,21 @@ export interface ProjectState {
   artifacts: string[];
 }
 
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  status: 'active' | 'exported' | 'draft';
+  completed_steps: number;
+  total_steps: number;
+  current_node: string | null;
+  updated_at: number;
+}
+
+export async function listProjects(): Promise<ProjectSummary[]> {
+  const response = await fetch('/api/projects');
+  return readResponse<ProjectSummary[]>(response);
+}
+
 export async function getProjectState(projectId: string): Promise<ProjectState> {
   const response = await fetch(`/api/projects/${projectId}/state`);
   return readResponse<ProjectState>(response);
@@ -125,6 +140,15 @@ export async function saveDocumentBlocks(projectId: string, blocks: DocBlockData
     body: JSON.stringify({ blocks }),
   });
   return readResponse<{ status: string }>(response);
+}
+
+export async function regenerateProjectExport(projectId: string, blocks: DocBlockData[]) {
+  const response = await fetch(`/api/projects/${projectId}/export`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ blocks }),
+  });
+  return readResponse<{ status: string; url: string }>(response);
 }
 
 // ── 素材库(todo-6)─────────────────────────────────────────────

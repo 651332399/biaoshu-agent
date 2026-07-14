@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { buildDocx } from '../lib/exportDocx';
+import { regenerateProjectExport } from '../lib/api';
 import { exportArtifactLabel, getDisplayVolumes } from '../lib/exportPlanView';
 import type { BackendExportPlan, BackendOutline } from '../engine/types';
 import type { Scenario } from '../engine/demo/types';
@@ -28,6 +29,7 @@ export function ExportDialog({
   onConfirm,
 }: Props) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [isExporting, setIsExporting] = useState(false);
   const displayVolumes = useMemo(
     () => getDisplayVolumes(scenario, backendExportPlan, backendOutline),
     [scenario, backendExportPlan, backendOutline],
@@ -46,14 +48,23 @@ export function ExportDialog({
   const handleDownload = async () => {
     try {
       if (serverDocxUrl) {
-        window.open(serverDocxUrl, '_blank', 'noopener,noreferrer');
+        const projectId = new URLSearchParams(window.location.search).get('project_id');
+        if (!projectId) {
+          throw new Error('当前页面缺少 project_id，无法确认编辑内容已写入导出文件');
+        }
+        setIsExporting(true);
+        const exported = await regenerateProjectExport(projectId, scenario.blocks);
+        window.open(exported.url, '_blank', 'noopener,noreferrer');
         return;
       }
       const blob = await buildDocx(scenario);
       saveAs(blob, `${scenario.meta.项目名}-投标文件.docx`);
     } catch (e) {
       console.error('Failed to generate docx', e);
-      window.alert('生成 Word 失败，请重试');
+      const message = e instanceof Error ? e.message : '未知错误';
+      window.alert(`生成 Word 失败：${message}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -167,9 +178,10 @@ export function ExportDialog({
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
           <button
             onClick={handleDownload}
+            disabled={isExporting}
             className="px-4.5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:bg-opacity-90 active:scale-95 transition shadow-sm cursor-pointer flex items-center gap-1.5"
           >
-            <span>💾</span> {downloadLabel}
+            <span>💾</span> {isExporting ? '正在写入编辑并重新导出…' : downloadLabel}
           </button>
           <button
             onClick={onConfirm}

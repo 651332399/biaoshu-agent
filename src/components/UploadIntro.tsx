@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RECENT_PROJECTS, RecentProjectRow } from './projects/ProjectsList';
+import { RecentProjects } from './projects/ProjectsList';
 
 interface Props {
   onStart: (file: File | string) => void;
@@ -210,11 +210,7 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
       {!isParsing && (
         <div className="w-full max-w-xl">
           <h2 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2.5 px-1">最近项目</h2>
-          <div className="space-y-2.5">
-            {RECENT_PROJECTS.map((p) => (
-              <RecentProjectRow key={p.id} project={p} onOpen={onOpenProject} />
-            ))}
-          </div>
+          <RecentProjects onOpen={onOpenProject} />
         </div>
       )}
     </div>

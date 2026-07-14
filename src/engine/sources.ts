@@ -36,7 +36,7 @@ export interface WorkspaceEngine {
   setSpeed(x: number): void;
   play(): void;
   pause(): void;
-  confirmCheckpoint(artifact?: unknown, confirmedFields?: ('项目编号' | '采购人')[]): void;
+  confirmCheckpoint(artifact?: unknown, confirmedFields?: ('项目名' | '项目编号' | '采购人')[]): void;
   chooseOption(index: number): void;
   provideSupplement(type: 'social' | 'pricing' | 'tax'): void;
   revealChapterManually(chapterId: string): void;
@@ -53,6 +53,11 @@ function isTenderSpec(value: unknown): value is BackendTenderSpec {
       && (value as BackendTenderSpec).project_meta
       && (value as BackendTenderSpec).export_plan,
   );
+}
+
+function draftArtifactNumber(path: string): number {
+  const match = path.match(/section-(\d+)\.json$/);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 /** llm 模式下 generate 节点走结构化 blocks 路径（content 留空，见
@@ -238,7 +243,10 @@ export class LiveSource implements WorkspaceEngine {
       if (remoteState.artifacts.includes('outline.json')) {
         await this.applyArtifact('outline', `/api/projects/${projectId}/artifacts/outline.json`);
       }
-      for (const artifact of remoteState.artifacts.filter((item) => item.startsWith('draft/')).sort()) {
+      for (const artifact of remoteState.artifacts
+        .filter((item) => item.startsWith('draft/'))
+        .sort((left, right) => draftArtifactNumber(left) - draftArtifactNumber(right)
+          || left.localeCompare(right))) {
         await this.applyArtifact('section_draft', `/api/projects/${projectId}/artifacts/${artifact}`);
       }
       if (remoteState.artifacts.includes('document_blocks.json')) {
@@ -408,19 +416,23 @@ export class LiveSource implements WorkspaceEngine {
     } else if (type === 'outline') {
       const outline = await getArtifact<BackendOutline>(url);
       this.state.backendOutline = outline;
-      const volume: Volume = {
-        id: 'live-outline',
-        名称: '后端生成标书大纲',
-        单独密封: false,
-        chapters: outline.sections.map((section, index) => ({
-          id: section.id || `live-chapter-${index + 1}`,
-          标题: section.title,
-          类型: '自撰区',
-          maps_to_requirement_ids: section.maps_to_requirement_ids,
-        })),
-      };
-      this.scenario.volumes = [volume];
-      this.state.grownVolumes = [volume.id];
+      if (this.state.backendExportPlan) {
+        this.applyExportPlan(this.state.backendExportPlan);
+      } else {
+        const volume: Volume = {
+          id: 'live-outline',
+          名称: '后端生成标书大纲',
+          单独密封: false,
+          chapters: outline.sections.map((section, index) => ({
+            id: section.id || `live-chapter-${index + 1}`,
+            标题: section.title,
+            类型: '自撰区',
+            maps_to_requirement_ids: section.maps_to_requirement_ids,
+          })),
+        };
+        this.scenario.volumes = [volume];
+        this.state.grownVolumes = [volume.id];
+      }
     } else if (type === 'tender_spec') {
       const tenderSpec = await getArtifact<BackendTenderSpec>(url);
       this.state.backendTenderSpec = tenderSpec;
@@ -541,7 +553,7 @@ export class LiveSource implements WorkspaceEngine {
   private resolveSectionIndex(draft: BackendSectionDraft, data?: Record<string, unknown>): number {
     const fromEvent = Number(data?.section_index);
     if (Number.isInteger(fromEvent) && fromEvent >= 1) return fromEvent;
-    const chapters = this.scenario.volumes[0]?.chapters ?? [];
+    const chapters = this.scenario.volumes.flatMap((volume) => volume.chapters);
     const byTitle = chapters.findIndex((chapter) => chapter.标题 === draft.title);
     if (byTitle >= 0) return byTitle + 1;
     return this.scenario.blocks.length + 1;
@@ -554,7 +566,7 @@ export class LiveSource implements WorkspaceEngine {
 
   async confirmCheckpoint(
     artifact?: unknown,
-    confirmedFields: ('项目编号' | '采购人')[] = [],
+    confirmedFields: ('项目名' | '项目编号' | '采购人')[] = [],
   ) {
     if (!this.projectId) return;
     if (this.state.pendingCard?.kind === 'export') {

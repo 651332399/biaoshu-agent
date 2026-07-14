@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { listProjects, type ProjectSummary } from '../../lib/api';
+
 export type ProjectStatus = 'active' | 'exported' | 'draft';
 
 export interface RecentProject {
@@ -6,12 +9,6 @@ export interface RecentProject {
   status: ProjectStatus;
   meta: string;
 }
-
-export const RECENT_PROJECTS: RecentProject[] = [
-  { id: 'kqyy', name: '北京口腔医院 2026 医用设备计量检测', status: 'active', meta: '阶段 6 / 9 · 生成中 · 综合评分法 · 限价 ¥27.0万' },
-  { id: 'haidian-cdc', name: '海淀区疾控中心检验设备维保', status: 'exported', meta: '9 / 9 · 已打包 bid.docx · 最低价法' },
-  { id: 'xiehe-img', name: '协和医院影像设备计量校准', status: 'draft', meta: '阶段 2 / 9 · 待确认要求清单' },
-];
 
 const STATUS_META: Record<ProjectStatus, { label: string; cls: string }> = {
   active: { label: '进行中', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -38,6 +35,44 @@ export function RecentProjectRow({ project, onOpen }: { project: RecentProject; 
   );
 }
 
+function toRecentProject(project: ProjectSummary): RecentProject {
+  const detail = project.status === 'exported'
+    ? '已生成交付文件'
+    : project.current_node ? `当前节点：${project.current_node}` : '等待开始';
+  return {
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    meta: `阶段 ${project.completed_steps} / ${project.total_steps} · ${detail}`,
+  };
+}
+
+export function RecentProjects({ onOpen }: { onOpen?: (id: string) => void }) {
+  const [projects, setProjects] = useState<RecentProject[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void listProjects()
+      .then((items) => {
+        if (!cancelled) setProjects(items.map(toRecentProject));
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : '项目加载失败');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (error) return <p className="text-xs text-red-600">项目加载失败：{error}</p>;
+  if (projects.length === 0) return <p className="text-xs text-[var(--muted)]">暂无项目</p>;
+  return (
+    <div className="space-y-2.5">
+      {projects.map((project) => (
+        <RecentProjectRow key={project.id} project={project} onOpen={onOpen} />
+      ))}
+    </div>
+  );
+}
+
 /** 项目一级页面:最近项目列表 + 新建入口。 */
 export function ProjectsList({ onOpen, onNew }: { onOpen?: (id: string) => void; onNew: () => void }) {
   return (
@@ -55,11 +90,7 @@ export function ProjectsList({ onOpen, onNew }: { onOpen?: (id: string) => void;
             ＋ 新建标书
           </button>
         </header>
-        <div className="space-y-2.5">
-          {RECENT_PROJECTS.map((p) => (
-            <RecentProjectRow key={p.id} project={p} onOpen={onOpen} />
-          ))}
-        </div>
+        <RecentProjects onOpen={onOpen} />
       </div>
     </div>
   );

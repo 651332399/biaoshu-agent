@@ -1,16 +1,31 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, test, expect, vi } from 'vitest';
-import { ProjectsList, RecentProjectRow, RECENT_PROJECTS } from './ProjectsList';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, test, expect, vi } from 'vitest';
+import { ProjectsList, RecentProjectRow, type RecentProject } from './ProjectsList';
 
-afterEach(cleanup);
+const PROJECTS = [
+  { id: 'p1', name: '真实项目一', status: 'active', completed_steps: 6, total_steps: 9, current_node: 'generate', updated_at: 3 },
+  { id: 'p2', name: '真实项目二', status: 'exported', completed_steps: 9, total_steps: 9, current_node: null, updated_at: 2 },
+  { id: 'p3', name: '真实项目三', status: 'draft', completed_steps: 0, total_steps: 9, current_node: 'ingest', updated_at: 1 },
+] as const;
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(PROJECTS), {
+    status: 200, headers: { 'content-type': 'application/json' },
+  })));
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('ProjectsList', () => {
-  test('renders all recent projects with their three status labels', () => {
+  test('renders projects returned by the backend with their status labels', async () => {
     render(<ProjectsList onNew={vi.fn()} />);
 
-    expect(screen.getByText('北京口腔医院 2026 医用设备计量检测')).toBeInTheDocument();
-    expect(screen.getByText('海淀区疾控中心检验设备维保')).toBeInTheDocument();
-    expect(screen.getByText('协和医院影像设备计量校准')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('真实项目一')).toBeInTheDocument());
+    expect(screen.getByText('真实项目二')).toBeInTheDocument();
+    expect(screen.getByText('真实项目三')).toBeInTheDocument();
 
     expect(screen.getByText('进行中')).toBeInTheDocument();
     expect(screen.getByText('已导出')).toBeInTheDocument();
@@ -25,18 +40,23 @@ describe('ProjectsList', () => {
     expect(onNew).toHaveBeenCalled();
   });
 
-  test('clicking a project row triggers onOpen with its id', () => {
+  test('clicking a project row triggers onOpen with its id', async () => {
     const onOpen = vi.fn();
     render(<ProjectsList onOpen={onOpen} onNew={vi.fn()} />);
 
-    fireEvent.click(screen.getByText('海淀区疾控中心检验设备维保'));
-    expect(onOpen).toHaveBeenCalledWith('haidian-cdc');
+    fireEvent.click(await screen.findByText('真实项目二'));
+    expect(onOpen).toHaveBeenCalledWith('p2');
   });
 });
 
 describe('RecentProjectRow', () => {
   test('renders each status with its own badge style', () => {
-    for (const project of RECENT_PROJECTS) {
+    const projects: RecentProject[] = [
+      { id: 'a', name: 'A', status: 'active', meta: 'x' },
+      { id: 'b', name: 'B', status: 'exported', meta: 'x' },
+      { id: 'c', name: 'C', status: 'draft', meta: 'x' },
+    ];
+    for (const project of projects) {
       const { unmount } = render(<RecentProjectRow project={project} />);
       const label = project.status === 'active' ? '进行中' : project.status === 'exported' ? '已导出' : '草稿';
       expect(screen.getByText(label)).toBeInTheDocument();
@@ -45,7 +65,7 @@ describe('RecentProjectRow', () => {
   });
 
   test('omitting onOpen does not throw when clicked', () => {
-    const project = RECENT_PROJECTS[0];
+    const project: RecentProject = { id: 'a', name: 'A', status: 'active', meta: 'x' };
     render(<RecentProjectRow project={project} />);
     expect(() => fireEvent.click(screen.getByText(project.name))).not.toThrow();
   });

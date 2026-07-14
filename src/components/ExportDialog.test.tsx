@@ -1,10 +1,14 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, test, expect, vi } from 'vitest';
 import { ExportDialog } from './ExportDialog';
 import type { BackendExportPlan } from '../engine/types';
 import type { Scenario } from '../engine/demo/types';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  window.history.pushState({}, '', '/');
+});
 
 function makeScenario(overrides?: Partial<Scenario>): Scenario {
   return {
@@ -137,5 +141,31 @@ describe('ExportDialog', () => {
 
     fireEvent.click(confirmButton);
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  test('server download regenerates from current editor blocks before opening artifact', async () => {
+    window.history.pushState({}, '', '/?project_id=p1');
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      status: 'exported', url: '/api/projects/p1/artifacts/export/fresh.zip',
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const scenario = makeScenario({
+      blocks: [{ id: 'b1', chapterId: 'c1', render: 'prose', 标题: '公司简介', prose: '人工编辑' }],
+    });
+    render(
+      <ExportDialog
+        scenario={scenario}
+        serverDocxUrl="/api/projects/p1/artifacts/export/old.zip"
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /下载分册打包 ZIP/ }));
+
+    await waitFor(() => expect(open).toHaveBeenCalledWith(
+      '/api/projects/p1/artifacts/export/fresh.zip', '_blank', 'noopener,noreferrer',
+    ));
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ blocks: scenario.blocks });
   });
 });
