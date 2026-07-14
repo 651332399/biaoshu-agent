@@ -5,6 +5,58 @@ function message(data: unknown, id: string) {
   return { data: JSON.stringify(data), lastEventId: id } as MessageEvent<string>;
 }
 
+function makeTenderSpec() {
+  return {
+    project_meta: {
+      项目名: '聚合规格测试项目',
+      项目编号: 'TS-001',
+      包号: null,
+      采购人: '测试采购人',
+      供应商占位: '【待填写】',
+      服务周期: null,
+      限价: 100000,
+      evidence: ['项目编号 TS-001'],
+      evidence_by_field: { 项目编号: ['项目编号 TS-001'], 采购人: ['采购人：测试采购人'] },
+      confirmed_fields: [],
+    },
+    export_plan: {
+      output_mode: 'single',
+      volumes: [{
+        volume_id: 'response',
+        cover_title: '响应文件',
+        file_name: '响应文件.docx',
+        section_ids: ['section-1'],
+        sealed_separately: false,
+        requires_toc: true,
+        requires_seal_page: true,
+        requires_index_table: false,
+        evidence: ['投标文件一册装订'],
+        required_forms: ['投标函'],
+      }],
+      package_zip: false,
+      naming_pattern: '{cover_title}.docx',
+      template_family: 'single_response',
+    },
+    style_spec: {
+      body_font: '宋体', body_size_pt: 12, body_color: '000000',
+      heading_fonts: {}, heading_sizes_pt: {}, heading_colors: {},
+      line_spacing: 1.5, line_spacing_pt: null, margins_cm: {}, page_size: 'A4',
+      toc_levels: '1-3', header_text: null, page_number: null, binding: null, evidence: [],
+    },
+    submission_spec: {
+      copies: {}, original_copy_marking: false, sealing_groups: [],
+      cross_page_seal: null, binding: null, e_version: null, evidence: [],
+    },
+    forms: [{
+      form_id: 'form-1', volume_id: 'response', title: '投标函',
+      fill_mode: 'copy_verbatim', source_status: 'available',
+      source_evidence: ['投标函原表'], header_snapshot: [],
+    }],
+    needs_confirmation: true,
+    confirmation_reasons: ['请核对分册结构'],
+  };
+}
+
 describe('LiveSource', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -47,6 +99,74 @@ describe('LiveSource', () => {
     expect(scenario.requirements[0].page).toBe(1);
     expect(source.getState().status).toBe('awaiting');
     expect(source.getState().pendingCard?.kind).toBe('checkpoint');
+  });
+
+  test('loads tender_spec as the source of truth and derives the editable export plan view', async () => {
+    const tenderSpec = makeTenderSpec();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(tenderSpec), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const scenario = makeLiveScenario();
+    const source = new LiveSource(scenario, () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+
+    await source.handleEvent('artifact_ready', message({
+      node: 'export_plan', artifact_type: 'tender_spec', url: '/tender_spec.json',
+    }, '40'));
+
+    expect(source.getState().backendTenderSpec).toEqual(tenderSpec);
+    expect(source.getState().backendExportPlan).toEqual(tenderSpec.export_plan);
+    expect(scenario.volumes[0]).toMatchObject({ id: 'response', 名称: '响应文件' });
+  });
+
+  test('checkpoint 4 merges an edited export plan into and submits the complete TenderSpec', async () => {
+    const tenderSpec = makeTenderSpec();
+    const posts: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') posts.push(JSON.parse(String(init.body)));
+      return new Response(JSON.stringify(tenderSpec), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    (source as unknown as { projectId: string }).projectId = 'p1';
+    await source.handleEvent('artifact_ready', message({ artifact_type: 'tender_spec', url: '/tender_spec.json' }, '41'));
+    await source.handleEvent('confirm_request', message({ checkpoint: 4, artifact_url: '/tender_spec.json' }, '42'));
+    const editedExportPlan = {
+      ...tenderSpec.export_plan,
+      volumes: [{ ...tenderSpec.export_plan.volumes[0], file_name: '编辑后响应文件.docx' }],
+    };
+
+    await source.confirmCheckpoint(editedExportPlan);
+
+    expect(posts.at(-1)).toEqual({
+      checkpoint: 4,
+      action: 'edit',
+      edited_artifact: { ...tenderSpec, export_plan: editedExportPlan },
+    });
+    expect(source.getState().backendTenderSpec?.export_plan).toEqual(editedExportPlan);
+    expect(source.getState().backendExportPlan).toEqual(editedExportPlan);
+  });
+
+  test('checkpoint 4 keeps approve semantics when the TenderSpec export plan was not edited', async () => {
+    const tenderSpec = makeTenderSpec();
+    const posts: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') posts.push(JSON.parse(String(init.body)));
+      return new Response(JSON.stringify(tenderSpec), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    (source as unknown as { projectId: string }).projectId = 'p1';
+    await source.handleEvent('artifact_ready', message({ artifact_type: 'tender_spec', url: '/tender_spec.json' }, '43'));
+    await source.handleEvent('confirm_request', message({ checkpoint: 4, artifact_url: '/tender_spec.json' }, '44'));
+
+    await source.confirmCheckpoint();
+
+    expect(posts.at(-1)).toEqual({ checkpoint: 4, action: 'approve' });
   });
 
   test('confirmCheckpoint without edits sends approve, with edits sends edit payload', async () => {
@@ -123,6 +243,33 @@ describe('LiveSource', () => {
     expect(source.getState().status).toBe('awaiting');
   });
 
+  test('restoreProject prefers tender_spec and falls back to legacy export_plan only when needed', async () => {
+    const tenderSpec = makeTenderSpec();
+    const requested: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requested.push(url);
+      if (url.endsWith('/state')) {
+        return new Response(JSON.stringify({
+          project_id: 'p1', completed_nodes: ['export_plan'], current_node: 'outline',
+          awaiting_checkpoint: 4, artifacts: ['tender_spec.json', 'export_plan.json'],
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify(tenderSpec), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+
+    await source.restoreProject('p1');
+
+    expect(requested).toContain('/api/projects/p1/artifacts/tender_spec.json');
+    expect(requested).not.toContain('/api/projects/p1/artifacts/export_plan.json');
+    expect(source.getState().backendTenderSpec).toEqual(tenderSpec);
+    expect(source.getState().backendExportPlan).toEqual(tenderSpec.export_plan);
+  });
+
   test('checkpoint 2 and 3 confirmations send edited outline/report artifacts', async () => {
     const posts: Record<string, unknown>[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -163,6 +310,32 @@ describe('LiveSource', () => {
     expect(scenario.blocks).toHaveLength(2);
     expect(scenario.blocks.find((b) => b.chapterId === 'live-chapter-1')?.prose).toBe('甲');
     expect(scenario.blocks.find((b) => b.chapterId === 'live-chapter-2')?.prose).toBe('乙');
+  });
+
+  test('section draft with blocks (llm mode, content left empty) renders from blocks, not the empty content', async () => {
+    const draft = {
+      title: '废标响应与佐证',
+      content: '',
+      maps_to_requirement_ids: ['req-0001'],
+      blocks: [
+        { kind: 'paragraph', level: 'body', spans: [{ text: '我方已', emphasis: 'none' }, { text: '完全响应', emphasis: 'strong' }], maps_to_requirement_ids: [] },
+        { kind: 'table', header: ['要求', '应答'], rows: [['req-0001', '已响应']], col_widths_cm: null, style_id: 'BidTable' },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(JSON.stringify(draft), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const scenario = makeLiveScenario();
+    const source = new LiveSource(scenario, () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+
+    await source.handleEvent('artifact_ready', message({ artifact_type: 'section_draft', url: '/d/1.json', section_index: 1, section_title: '废标响应与佐证' }, '6'));
+
+    // paragraph 和 table 拆成各自的块，table 走 render:'table' 交给 PaperCanvas 的
+    // Tiptap Table 扩展渲染成真表格，不再拍扁成"| a | b |"纯文本塞进 prose。
+    expect(scenario.blocks).toHaveLength(2);
+    expect(scenario.blocks[0].render).toBe('prose');
+    expect(scenario.blocks[0].prose).toContain('我方已完全响应');
+    expect(scenario.blocks[1].render).toBe('table');
+    expect(scenario.blocks[1].table).toEqual({ headers: ['要求', '应答'], rows: [['req-0001', '已响应']] });
   });
 
   test('coverage report expands into per-risk and negative-deviation redlines', async () => {

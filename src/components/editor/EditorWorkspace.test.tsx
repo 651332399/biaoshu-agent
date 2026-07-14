@@ -1,5 +1,5 @@
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, test, expect, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, test, expect } from 'vitest';
 import { EditorWorkspace } from './EditorWorkspace';
 import { kqyy } from '../../scenarios/kqyy';
 import type { EngineState } from '../../engine/ScenarioEngine';
@@ -47,7 +47,6 @@ describe('EditorWorkspace', () => {
         scenario={kqyy}
         engine={engine}
         onOpenLibrary={() => {}}
-        onExport={() => {}}
       />
     );
 
@@ -56,7 +55,6 @@ describe('EditorWorkspace', () => {
     expect(screen.getByText(/○ 已保存/)).toBeInTheDocument();
     expect(screen.getAllByText(/要求确认 · 把关/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/阶段 1\/9/).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /导出分册/ })).toBeInTheDocument();
   });
 
   test('shows the AI auto-save indicator while the engine is playing', () => {
@@ -66,26 +64,23 @@ describe('EditorWorkspace', () => {
         scenario={kqyy}
         engine={engine}
         onOpenLibrary={() => {}}
-        onExport={() => {}}
       />
     );
     expect(screen.getByText(/● AI 自动保存/)).toBeInTheDocument();
     expect(screen.queryByText(/○ 已保存/)).not.toBeInTheDocument();
   });
 
-  test('clicking the export button calls onExport', () => {
-    const onExport = vi.fn();
+  test('derives the export phase and renders the packaging page once stage 9 is reached', () => {
     render(
       <EditorWorkspace
-        state={baseState}
+        state={{ ...baseState, activeStage: 9, pendingCard: { id: 'export-1', kind: 'export', stage: 9, duration: 0 } as any }}
         scenario={kqyy}
         engine={engine}
         onOpenLibrary={() => {}}
-        onExport={onExport}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: /导出分册/ }));
-    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText(/导出打包/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/智能标书最终终审与打包导出/)).toBeInTheDocument();
   });
 
   test('derives the self-check phase and stage once redlines are revealed', () => {
@@ -95,7 +90,6 @@ describe('EditorWorkspace', () => {
         scenario={kqyy}
         engine={engine}
         onOpenLibrary={() => {}}
-        onExport={() => {}}
       />
     );
     expect(screen.getAllByText(/合规自检 · 防废标/).length).toBeGreaterThan(0);

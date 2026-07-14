@@ -11,11 +11,10 @@ interface Props {
   scenario: Scenario;
   engine: WorkspaceEngine;
   onOpenLibrary: () => void;
-  onExport: () => void;
 }
 
-/** 1c 核心:文档为中心的三栏全屏编辑器。左=结构/分类,中=标书正文纸张,右=Copilot。 */
-export function EditorWorkspace({ state, scenario, engine, onOpenLibrary, onExport }: Props) {
+/** 1c 核心:文档为中心的三栏全屏编辑器。左=结构/分类,中=标书正文纸张,右=Copilot。阶段(含导出)完全由引擎状态驱动,无需手动跳转。 */
+export function EditorWorkspace({ state, scenario, engine, onOpenLibrary }: Props) {
   const phase = derivePhase(state);
   const saving = state.status === 'playing';
 
@@ -31,12 +30,6 @@ export function EditorWorkspace({ state, scenario, engine, onOpenLibrary, onExpo
             {saving ? '● AI 自动保存' : '○ 已保存'} · {PHASE_LABEL[phase]} · 阶段 {state.activeStage || 0}/9
           </span>
         </div>
-        <button
-          onClick={onExport}
-          className="shrink-0 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90 active:scale-95 transition"
-        >
-          导出分册 →
-        </button>
       </div>
 
       {/* 三栏 */}

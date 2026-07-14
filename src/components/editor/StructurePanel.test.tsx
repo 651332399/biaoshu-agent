@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import type { EditorPhase } from './phase';
 import { afterEach, describe, test, expect } from 'vitest';
 import { StructurePanel } from './StructurePanel';
 import { kqyy } from '../../scenarios/kqyy';
@@ -110,5 +111,64 @@ describe('StructurePanel', () => {
     expect(screen.getByText(/第一章 营业执照与 CMA\/CNAS 资质/)).toBeInTheDocument();
     expect(screen.getByText(/整册进度/)).toBeInTheDocument();
     expect(screen.getByText('1/8 章')).toBeInTheDocument();
+  });
+
+  test('generate phase: backend export plan overrides scenario volumes in tree', () => {
+    render(
+      <StructurePanel
+        state={{
+          ...baseState,
+          backendExportPlan: {
+            output_mode: 'three_volume',
+            package_zip: true,
+            naming_pattern: '*.docx',
+            volumes: [
+              {
+                volume_id: 'qualification',
+                cover_title: '资格证明文件',
+                file_name: '资格证明文件-测试项目.docx',
+                section_ids: ['s1'],
+                sealed_separately: true,
+                requires_toc: true,
+                requires_seal_page: true,
+                requires_index_table: true,
+                evidence: [],
+              },
+            ],
+          },
+          backendOutline: {
+            sections: [
+              { id: 's1', title: '资格审查索引表', maps_to_requirement_ids: [], asset_refs: [] },
+            ],
+          },
+        }}
+        scenario={kqyy}
+        engine={engine}
+        phase="generate"
+      />,
+    );
+
+    expect(screen.getByText('资格证明文件')).toBeInTheDocument();
+    expect(screen.getByText('资格证明文件-测试项目.docx')).toBeInTheDocument();
+    expect(screen.getByText(/资格审查索引表/)).toBeInTheDocument();
+    expect(screen.queryByText(/第一章 营业执照与 CMA\/CNAS 资质/)).not.toBeInTheDocument();
+  });
+
+  // 回归:早 return(requirements/selfcheck)之前的 hooks 数必须与 generate/export
+  // 一致。displayVolumes 的 useMemo 曾放在早 return 之后,phase 切换时 React 报
+  // "Rendered more hooks than during the previous render" 崩溃(live restore 触发)。
+  test('phase transition does not violate rules of hooks (requirements -> generate)', () => {
+    const props = (phase: EditorPhase) => ({
+      state: { ...baseState, grownVolumes: ['vol.1'], revealedBlocks: ['blk.open'] },
+      scenario: kqyy,
+      engine,
+      phase,
+    });
+    const { rerender } = render(<StructurePanel {...props('requirements')} />);
+    expect(() => {
+      rerender(<StructurePanel {...props('selfcheck')} />);
+      rerender(<StructurePanel {...props('generate')} />);
+    }).not.toThrow();
+    expect(screen.getByText(/整册进度/)).toBeInTheDocument();
   });
 });

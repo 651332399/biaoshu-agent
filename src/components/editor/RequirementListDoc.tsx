@@ -3,6 +3,7 @@ import type { BackendRequirement } from '../../engine/types';
 
 interface Props {
   requirements: BackendRequirement[];
+  progressMessage?: string;
 }
 
 const GROUP_ORDER = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'] as const;
@@ -16,7 +17,7 @@ const GROUP_META: Record<string, { dot: string; label: string }> = {
 };
 
 /** P2 中央文档:AI 抽取的招标要求清单,以可复核的「要求清单」文档形态呈现。 */
-export function RequirementListDoc({ requirements }: Props) {
+export function RequirementListDoc({ requirements, progressMessage }: Props) {
   const groups = useMemo(
     () =>
       GROUP_ORDER.map((type) => ({
@@ -37,15 +38,18 @@ export function RequirementListDoc({ requirements }: Props) {
       </header>
 
       {requirements.length === 0 ? (
-        <p className="text-center text-sm text-[var(--muted)] py-12">
-          等待后端解析招标文件,抽取要求清单…
-        </p>
+        <div className="text-center text-sm text-[var(--muted)] py-12">
+          <p>等待后端解析招标文件,抽取要求清单…</p>
+          {progressMessage && (
+            <p className="mt-2 text-xs font-mono text-[var(--accent)]">{progressMessage}</p>
+          )}
+        </div>
       ) : (
         <div className="space-y-7">
           {groups.map((group) => {
             const meta = GROUP_META[group.type];
             return (
-              <section key={group.type}>
+              <section key={group.type} id={`req-group-${group.type}`}>
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-3">
                   <span className={`w-2 h-2 rounded-full ${meta.dot}`}></span>
                   {meta.label}

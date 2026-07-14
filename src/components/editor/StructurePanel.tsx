@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { Scenario } from '../../engine/demo/types';
+import { getDisplayVolumes } from '../../lib/exportPlanView';
 import { DocTree } from '../DocTree';
 import type { EditorPhase } from './phase';
 
@@ -28,6 +29,13 @@ export function StructurePanel({ state, scenario, engine, phase }: Props) {
     for (const r of state.backendRequirements) map.set(r.type, (map.get(r.type) ?? 0) + 1);
     return map;
   }, [state.backendRequirements]);
+  // Hooks 必须无条件在早 return 之前调用:phase 切换(requirements/selfcheck →
+  // generate/export)会跨越下方早 return,若 useMemo 在 return 之后则 hook 数变化,
+  // React 报 "Rendered more hooks than during the previous render" 崩溃。
+  const displayVolumes = useMemo(
+    () => getDisplayVolumes(scenario, state.backendExportPlan, state.backendOutline),
+    [scenario, state.backendExportPlan, state.backendOutline],
+  );
   const mandatory = state.backendRequirements.filter((r) => r.mandatory).length;
 
   // 要求确认阶段:要求分类 + 重点核对卡
@@ -44,7 +52,12 @@ export function StructurePanel({ state, scenario, engine, phase }: Props) {
             return (
               <li
                 key={type}
-                className="flex items-center justify-between rounded-lg bg-white border border-gray-100 px-3 py-2 text-xs"
+                onClick={() =>
+                  document
+                    .getElementById(`req-group-${type}`)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                className="flex items-center justify-between rounded-lg bg-white border border-gray-100 px-3 py-2 text-xs cursor-pointer hover:border-[var(--accent)] hover:bg-gray-50 transition-colors"
               >
                 <span className={`font-semibold ${CAT_STYLE[type]}`}>{type}</span>
                 <span className="font-mono font-bold text-gray-500">{n}</span>
@@ -96,18 +109,27 @@ export function StructurePanel({ state, scenario, engine, phase }: Props) {
     );
   }
 
-  // 生成 / 报价 / 导出:分册结构树 + 整册进度
-  const totalChapters = scenario.volumes.reduce((n, v) => n + v.chapters.length, 0);
-  const doneChapters = scenario.blocks.filter((b) => state.revealedBlocks.includes(b.id)).length;
+  // 生成 / 报价 / 导出:分册结构树 + 整册进度(displayVolumes 已在顶部 useMemo)
+  const grownVolumes = state.backendExportPlan
+    ? displayVolumes.map((volume) => volume.id)
+    : state.grownVolumes;
+  const totalChapters = displayVolumes.reduce((n, v) => n + v.chapters.length, 0);
+  // 一章可拆多块(sectionDraftToDocBlocks),进度分子按已揭示块的去重 chapterId
+  // 计章数,与分母(章数)同口径,避免 block 数当章数导致进度失真。
+  const doneChapters = new Set(
+    scenario.blocks
+      .filter((b) => state.revealedBlocks.includes(b.id))
+      .map((b) => b.chapterId),
+  ).size;
   const pct = totalChapters > 0 ? Math.min(100, Math.round((doneChapters / totalChapters) * 100)) : 0;
 
   return (
     <aside className="w-64 shrink-0 border-r border-[var(--border)] bg-gray-50 h-full overflow-hidden flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <DocTree
-          volumes={scenario.volumes}
+          volumes={displayVolumes}
           requirements={scenario.requirements}
-          grownVolumes={state.grownVolumes}
+          grownVolumes={grownVolumes}
           focus={state.focus}
           engine={engine}
         />

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, test, expect, vi } from 'vitest';
 import { ExportDialog } from './ExportDialog';
+import type { BackendExportPlan } from '../engine/types';
 import type { Scenario } from '../engine/demo/types';
 
 afterEach(cleanup);
@@ -55,7 +56,7 @@ function checkAllItems() {
 describe('ExportDialog', () => {
   test('renders volume list with names and chapters', () => {
     const scenario = makeScenario();
-    render(<ExportDialog scenario={scenario} onClose={vi.fn()} onConfirm={vi.fn()} />);
+    render(<ExportDialog scenario={scenario} onConfirm={vi.fn()} />);
 
     expect(screen.getByText('📕 商务卷')).toBeInTheDocument();
     expect(screen.getByText('📕 资质卷')).toBeInTheDocument();
@@ -63,9 +64,46 @@ describe('ExportDialog', () => {
     expect(screen.getByText('· 资质证书')).toBeInTheDocument();
   });
 
+  test('prefers backend export plan volume names and file names', () => {
+    const scenario = makeScenario();
+    const backendExportPlan: BackendExportPlan = {
+      output_mode: 'three_volume',
+      package_zip: true,
+      naming_pattern: '*.docx',
+      volumes: [
+        {
+          volume_id: 'qualification',
+          cover_title: '资格证明文件',
+          file_name: '资格证明文件-测试项目.docx',
+          section_ids: ['s1'],
+          sealed_separately: true,
+          requires_toc: true,
+          requires_seal_page: true,
+          requires_index_table: true,
+          evidence: [],
+        },
+      ],
+    };
+    render(
+      <ExportDialog
+        scenario={scenario}
+        backendExportPlan={backendExportPlan}
+        backendOutline={{ sections: [{ id: 's1', title: '资格审查索引表', maps_to_requirement_ids: [], asset_refs: [] }] }}
+        serverDocxUrl="/api/projects/p/artifacts/export.zip"
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('📕 资格证明文件')).toBeInTheDocument();
+    expect(screen.getByText('文件命名：资格证明文件-测试项目.docx')).toBeInTheDocument();
+    expect(screen.getByText('· 资格审查索引表')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /下载分册打包 ZIP/ })).toBeInTheDocument();
+    expect(screen.queryByText('📕 商务卷')).not.toBeInTheDocument();
+  });
+
   test('shows seal warning only for volumes with 单独密封 true', () => {
     const scenario = makeScenario();
-    render(<ExportDialog scenario={scenario} onClose={vi.fn()} onConfirm={vi.fn()} />);
+    render(<ExportDialog scenario={scenario} onConfirm={vi.fn()} />);
 
     const sealWarnings = screen.getAllByText('需单独签章密封');
     expect(sealWarnings).toHaveLength(1);
@@ -75,7 +113,7 @@ describe('ExportDialog', () => {
   test('confirm button is disabled until all checklist items are checked', () => {
     const scenario = makeScenario();
     const onConfirm = vi.fn();
-    render(<ExportDialog scenario={scenario} onClose={vi.fn()} onConfirm={onConfirm} />);
+    render(<ExportDialog scenario={scenario} onConfirm={onConfirm} />);
 
     const confirmButton = screen.getByRole('button', { name: '完成终审' });
     expect(confirmButton).toBeDisabled();
@@ -90,7 +128,7 @@ describe('ExportDialog', () => {
   test('confirm button becomes enabled and triggers onConfirm once all items are checked', () => {
     const scenario = makeScenario();
     const onConfirm = vi.fn();
-    render(<ExportDialog scenario={scenario} onClose={vi.fn()} onConfirm={onConfirm} />);
+    render(<ExportDialog scenario={scenario} onConfirm={onConfirm} />);
 
     checkAllItems();
 

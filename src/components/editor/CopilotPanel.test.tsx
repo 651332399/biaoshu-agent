@@ -23,6 +23,7 @@ function makeState(overrides: Partial<EngineState> = {}): EngineState {
     pendingCard: null,
     redlineOverrides: {},
     backendRequirements: [],
+    backendTenderSpec: null,
     backendExportPlan: null,
     backendOutline: null,
     backendCoverage: null,
@@ -132,7 +133,6 @@ describe('CopilotPanel', () => {
 
     expect(screen.getByText('· 生成第一章')).toBeInTheDocument();
     expect(screen.getByText('· 生成第二章')).toBeInTheDocument();
-    expect(screen.getByText('⏸ 1 项待决断')).toBeInTheDocument();
     expect(screen.getByText(/业绩口径待决断/)).toBeInTheDocument();
     expect(screen.getByText('资质证书A')).toBeInTheDocument();
     expect(screen.getByText('命中')).toBeInTheDocument();
@@ -191,7 +191,17 @@ describe('CopilotPanel', () => {
         package_zip: true,
         naming_pattern: '{volume}_{title}',
         volumes: [
-          { volume_id: 'v1', cover_title: '技术标', file_name: 'v1.docx', section_ids: [], sealed_separately: true, requires_toc: true },
+          {
+            volume_id: 'v1',
+            cover_title: '技术标',
+            file_name: '技术标-测试项目.docx',
+            section_ids: [],
+            sealed_separately: true,
+            requires_toc: true,
+            requires_seal_page: true,
+            requires_index_table: true,
+            evidence: [],
+          },
         ],
       },
       serverPackageUrl: 'https://example.com/bid.zip',
@@ -200,6 +210,7 @@ describe('CopilotPanel', () => {
 
     expect(screen.getByText(/导出模式:分册导出/)).toBeInTheDocument();
     expect(screen.getByText('技术标')).toBeInTheDocument();
+    expect(screen.getByText('技术标-测试项目.docx')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /下载分册打包 ZIP/ });
     expect(link).toHaveAttribute('href', 'https://example.com/bid.zip');
     expect(link).toHaveAttribute('download');
@@ -222,6 +233,147 @@ describe('CopilotPanel', () => {
 
     expect(screen.getByText('确认要求清单')).toBeInTheDocument();
     expect(screen.getByText('后端解析超时')).toBeInTheDocument();
+  });
+
+  test('checkpoint 4 identifies TenderSpec and submits the complete edited aggregate', () => {
+    const exportPlan = {
+      output_mode: 'single', package_zip: false, naming_pattern: '{cover_title}.docx',
+      volumes: [{
+        volume_id: 'response', cover_title: '响应文件', file_name: '响应文件.docx', section_ids: [],
+        sealed_separately: false, requires_toc: true, requires_seal_page: true,
+        requires_index_table: false, evidence: [],
+      }],
+    };
+    const engine = makeEngine();
+    const tenderSpec = {
+      project_meta: {
+        '项目名': '测试项目', '项目编号': 'TEST-001', '包号': null, '采购人': '测试单位',
+        '供应商占位': '【待填写】', '服务周期': null, '限价': null, evidence: [],
+        evidence_by_field: { '项目编号': ['项目编号：TEST-001'], '采购人': ['采购人：测试单位'] }, confirmed_fields: [],
+      },
+      export_plan: exportPlan,
+      style_spec: {}, submission_spec: {}, forms: [], form_candidates: [], required_form_baseline: {},
+      needs_confirmation: true, confirmation_reasons: ['manual_tender_spec_review_required'],
+      confirmation_status: 'pending', confirmed_reasons: [], confirmed_at: null,
+    } as EngineState['backendTenderSpec'];
+    const state = makeState({
+      activeStage: 3,
+      pendingCard: { id: 'confirm-4', stage: 3, kind: 'checkpoint', duration: 0, checkpointTitle: '确认聚合规格' },
+      backendTenderSpec: tenderSpec,
+      backendExportPlan: exportPlan,
+    });
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={engine} phase="generate" onOpenLibrary={vi.fn()} />);
+
+    expect(screen.getByText(/当前确认产物：TenderSpec 分册方案（export_plan）/)).toBeInTheDocument();
+    expect(screen.getByText(/导出模式：single/)).toBeInTheDocument();
+    expect(screen.getByText(/表单 0 项/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '高级：编辑原始 JSON' }));
+    fireEvent.change(screen.getAllByRole('textbox')[0], {
+      target: { value: JSON.stringify({
+        ...tenderSpec,
+        export_plan: { ...exportPlan, naming_pattern: 'edited-{cover_title}.docx' },
+      }) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '确认继续' }));
+
+    expect(engine.confirmCheckpoint).toHaveBeenCalledWith({
+      ...tenderSpec,
+      export_plan: { ...exportPlan, naming_pattern: 'edited-{cover_title}.docx' },
+    }, []);
+  });
+
+  test('checkpoint 4 blocks confirmation when a copy-verbatim form is unresolved', () => {
+    const exportPlan = {
+      output_mode: 'single', package_zip: false, naming_pattern: '{cover_title}.docx',
+      volumes: [{
+        volume_id: 'response', cover_title: '响应文件', file_name: '响应文件.docx', section_ids: [],
+        sealed_separately: false, requires_toc: true, requires_seal_page: true,
+        requires_index_table: false, evidence: [], required_forms: ['授权委托书'],
+      }],
+    };
+    const engine = makeEngine();
+    const state = makeState({
+      activeStage: 3,
+      pendingCard: { id: 'confirm-4', stage: 3, kind: 'checkpoint', duration: 0, checkpointTitle: '确认聚合规格' },
+      backendExportPlan: exportPlan,
+      backendTenderSpec: {
+        project_meta: {
+          '项目名': '测试项目', '项目编号': 'TEST-001', '包号': null, '采购人': '测试单位',
+          '供应商占位': '【待填写】', '服务周期': null, '限价': null, evidence: [],
+          evidence_by_field: { '项目编号': ['项目编号：TEST-001'], '采购人': ['采购人：测试单位'] }, confirmed_fields: [],
+        },
+        export_plan: exportPlan,
+        style_spec: {}, submission_spec: {}, required_form_baseline: { response: ['授权委托书'] },
+        forms: [{
+          form_id: 'response:授权委托书', volume_id: 'response', title: '授权委托书', fill_mode: 'copy_verbatim',
+          source_status: 'missing', source_evidence: [], header_snapshot: [], structure_fingerprint: null,
+          fingerprint_anchor: null, source_kind: 'missing', template_source: null, template_source_sha256: null,
+          template_confirmed: false, template_confirmed_at: null, template_confirmation_digest: null,
+        }],
+        needs_confirmation: true, confirmation_reasons: ['required_form_unresolved'],
+        confirmation_status: 'pending', confirmed_reasons: [], confirmed_at: null,
+      } as EngineState['backendTenderSpec'],
+    });
+
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={engine} phase="generate" onOpenLibrary={vi.fn()} />);
+    expect(screen.getByText(/缺少可编辑原样表单：授权委托书/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '确认继续' }));
+    expect(screen.getByText(/缺少可验证的原样表单：授权委托书/)).toBeInTheDocument();
+    expect(engine.confirmCheckpoint).not.toHaveBeenCalled();
+  });
+
+  test('checkpoint 4 promotes a pre-resolved ambiguous form candidate to required', () => {
+    const exportPlan = {
+      output_mode: 'single', package_zip: false, naming_pattern: '{cover_title}.docx',
+      volumes: [{
+        volume_id: 'response', cover_title: '响应文件', file_name: '响应文件.docx', section_ids: [],
+        sealed_separately: false, requires_toc: true, requires_seal_page: true,
+        requires_index_table: false, evidence: [], required_forms: [],
+      }],
+    };
+    const engine = makeEngine();
+    const tenderSpec = {
+      project_meta: {
+        '项目名': '测试项目', '项目编号': 'TEST-001', '包号': null, '采购人': '测试单位',
+        '供应商占位': '【待填写】', '服务周期': null, '限价': null, evidence: [],
+        evidence_by_field: { '项目编号': ['项目编号：TEST-001'], '采购人': ['采购人：测试单位'] }, confirmed_fields: [],
+      },
+      export_plan: exportPlan,
+      style_spec: {}, submission_spec: {}, required_form_baseline: {},
+      forms: [{
+        form_id: 'response:服务确认表', volume_id: 'response', title: '服务确认表', fill_mode: 'copy_verbatim',
+        source_status: 'available', source_evidence: [], header_snapshot: [], structure_fingerprint: 'strict-fingerprint',
+        fingerprint_anchor: '服务确认表', source_kind: 'tender', template_source: '/tmp/source.docx', template_source_sha256: 'source-sha',
+        template_confirmed: false, template_confirmed_at: null, template_confirmation_digest: null,
+      }],
+      form_candidates: [{
+        candidate_id: 'response:服务确认表', volume_id: 'response', title: '服务确认表',
+        evidence: ['附件3 服务确认表'], confidence: 0.55, status: 'pending', reason: '附件标题候选',
+      }],
+      needs_confirmation: true, confirmation_reasons: ['form_candidate_pending'],
+      confirmation_status: 'pending', confirmed_reasons: [], confirmed_at: null,
+    } as EngineState['backendTenderSpec'];
+    const state = makeState({
+      activeStage: 3,
+      pendingCard: { id: 'confirm-4', stage: 3, kind: 'checkpoint', duration: 0, checkpointTitle: '确认聚合规格' },
+      backendExportPlan: exportPlan,
+      backendTenderSpec: tenderSpec,
+    });
+
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={engine} phase="generate" onOpenLibrary={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '确认继续' }));
+    expect(screen.getByText(/请逐项确认所有候选表单/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '列为必需' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认继续' }));
+    expect(engine.confirmCheckpoint).toHaveBeenCalledWith({
+      ...tenderSpec,
+      export_plan: {
+        ...exportPlan,
+        volumes: [{ ...exportPlan.volumes[0], required_forms: ['服务确认表'] }],
+      },
+      form_candidates: [{ ...tenderSpec.form_candidates![0], status: 'required' }],
+    }, []);
   });
 
   test('typing a message and pressing the send button calls engine.addCustomUserMessage and clears input', () => {

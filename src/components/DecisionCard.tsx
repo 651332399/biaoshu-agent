@@ -1,13 +1,13 @@
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import type { BackendExportPlan, BackendOutline, BackendReport, BackendRequirement } from '../engine/types';
+import type { BackendExportPlan, BackendOutline, BackendReport, BackendRequirement, BackendTenderSpec } from '../engine/types';
 import type { Step } from '../engine/demo/types';
 
 interface Props {
   card: Step;
   requirements?: BackendRequirement[];
   artifact?: { label: string; value: unknown };
-  onConfirm: (artifact?: unknown) => void;
+  onConfirm: (artifact?: unknown, confirmedFields?: ('项目编号' | '采购人')[]) => void;
   onChoose: (index: number) => void;
 }
 
@@ -36,6 +36,9 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
+  const [manualMeta, setManualMeta] = useState<Partial<Record<'项目编号' | '采购人', string>>>({});
+  const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目编号' | '采购人', boolean>>>({});
+  const [candidateDecisions, setCandidateDecisions] = useState<Record<string, 'required' | 'excluded'>>({});
   const grouped = useMemo(() => {
     const order = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'];
     return order
@@ -55,11 +58,113 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   );
   const outline = isOutlineArtifact(artifact?.value) ? artifact.value : null;
   const report = isReportArtifact(artifact?.value) ? artifact.value : null;
-  const exportPlan = isExportPlanArtifact(artifact?.value) ? artifact.value : null;
+  const tenderSpec = isTenderSpecArtifact(artifact?.value) ? artifact.value : null;
+  const exportPlan = tenderSpec?.export_plan ?? (isExportPlanArtifact(artifact?.value) ? artifact.value : null);
+  const unverifiedMetaFields = tenderSpec
+    ? (['项目编号', '采购人'] as const).filter((field) => !tenderSpec.project_meta.evidence_by_field?.[field]?.length)
+    : [];
+  const requiredFormKeys = new Set(
+    tenderSpec?.export_plan.volumes.flatMap((volume) =>
+      (volume.required_forms ?? []).map((title) => `${volume.volume_id}:${title}`),
+    ) ?? [],
+  );
+  const unresolvedForms = tenderSpec?.forms.filter(
+    (form) => requiredFormKeys.has(`${form.volume_id}:${form.title}`)
+      && form.fill_mode === 'copy_verbatim'
+      && form.source_status !== 'available',
+  ) ?? [];
+  const pendingFormCandidates = tenderSpec?.form_candidates?.filter(
+    (candidate) => candidate.status === 'pending',
+  ) ?? [];
+  const registryForms = tenderSpec?.forms.filter((form) => form.source_kind === 'registry') ?? [];
   const negativeDeviations = report?.deviations.filter((item) => item.deviation === '负偏离') ?? [];
   const warnDeviations = report?.deviations.filter((item) => item.deviation !== '无偏离') ?? [];
 
   const confirmWithDraft = () => {
+    if (tenderSpec) {
+      let editedTenderSpec = tenderSpec;
+      if (draft && draft !== artifactDraft) {
+        try {
+          const parsed = JSON.parse(draft) as unknown;
+          if (!isTenderSpecArtifact(parsed)) {
+            setError('原始 JSON 必须保持完整 TenderSpec 结构。');
+            return;
+          }
+          editedTenderSpec = parsed;
+        } catch {
+          setError('JSON 格式不正确，请修正后再确认。');
+          return;
+        }
+      }
+      if (editedTenderSpec.form_candidates?.some(
+        (candidate) => candidate.status === 'pending' && !candidateDecisions[candidate.candidate_id],
+      )) {
+        setError('请逐项确认所有候选表单是否属于本次投标文件。');
+        return;
+      }
+      const decidedCandidates = (editedTenderSpec.form_candidates ?? []).map((candidate) => ({
+        ...candidate,
+        status: candidate.status === 'pending'
+          ? candidateDecisions[candidate.candidate_id] ?? candidate.status
+          : candidate.status,
+      }));
+      const decidedByVolume = new Map<string, Map<string, 'required' | 'excluded' | 'pending'>>();
+      for (const candidate of decidedCandidates) {
+        const decisions = decidedByVolume.get(candidate.volume_id) ?? new Map();
+        decisions.set(candidate.title, candidate.status);
+        decidedByVolume.set(candidate.volume_id, decisions);
+      }
+      editedTenderSpec = {
+        ...editedTenderSpec,
+        form_candidates: decidedCandidates,
+        export_plan: {
+          ...editedTenderSpec.export_plan,
+          volumes: editedTenderSpec.export_plan.volumes.map((volume) => {
+            const decisions = decidedByVolume.get(volume.volume_id);
+            if (!decisions) return volume;
+            const retained = (volume.required_forms ?? []).filter(
+              (title) => decisions.get(title) !== 'excluded',
+            );
+            const additions = [...decisions.entries()]
+              .filter(([, status]) => status === 'required')
+              .map(([title]) => title);
+            return { ...volume, required_forms: [...new Set([...retained, ...additions])] };
+          }),
+        },
+      };
+      const editedRequiredFormKeys = new Set(
+        editedTenderSpec.export_plan.volumes.flatMap((volume) =>
+          (volume.required_forms ?? []).map((title) => `${volume.volume_id}:${title}`),
+        ),
+      );
+      const editedUnresolvedForms = editedTenderSpec.forms.filter(
+        (form) => editedRequiredFormKeys.has(`${form.volume_id}:${form.title}`)
+          && form.fill_mode === 'copy_verbatim'
+          && form.source_status !== 'available',
+      );
+      if (editedUnresolvedForms.length > 0) {
+        setError(`缺少可验证的原样表单：${editedUnresolvedForms.map((form) => form.title).join('、')}。`);
+        return;
+      }
+      const projectMeta = { ...editedTenderSpec.project_meta };
+      for (const field of unverifiedMetaFields) {
+        const value = (manualMeta[field] ?? projectMeta[field] ?? '').trim();
+        if (!value) {
+          setError(`请补录${field}后再确认，不能用空值放行。`);
+          return;
+        }
+        if (!manualConfirmed[field]) {
+          setError(`请确认${field}为人工补录的真实信息。`);
+          return;
+        }
+        projectMeta[field] = value;
+      }
+      onConfirm(
+        { ...editedTenderSpec, project_meta: projectMeta },
+        unverifiedMetaFields,
+      );
+      return;
+    }
     if (artifact) {
       if (!draft || draft === artifactDraft) {
         onConfirm();
@@ -251,6 +356,92 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
             </div>
           )}
 
+          {tenderSpec && (
+            <div className="space-y-2 border-y border-blue-100 py-2 text-xs text-gray-700">
+              <div className="font-semibold text-gray-900">
+                表单 {tenderSpec.forms.length} 项：原文可用 {tenderSpec.forms.filter((form) => form.source_kind === 'tender').length} 项，
+                系统生成 {tenderSpec.forms.filter((form) => form.source_kind === 'generated').length} 项，
+                缺失 {unresolvedForms.length} 项
+              </div>
+              {registryForms.length > 0 && (
+                <p className="text-amber-700">
+                  模板库匹配：{registryForms.map((form) => form.title).join('、')}。确认后将记录模板指纹和文件摘要。
+                </p>
+              )}
+              {unresolvedForms.length > 0 && (
+                <p className="font-semibold text-red-700">
+                  缺少可编辑原样表单：{unresolvedForms.map((form) => form.title).join('、')}。当前禁止继续生成。
+                </p>
+              )}
+              {pendingFormCandidates.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="font-semibold text-amber-800">
+                    发现 {pendingFormCandidates.length} 个附件表单候选，需逐项确认
+                  </p>
+                  {pendingFormCandidates.map((candidate) => (
+                    <div key={candidate.candidate_id} className="rounded-md border border-amber-100 bg-white p-2">
+                      <div className="font-semibold text-gray-900">{candidate.title}</div>
+                      <div className="mt-1 text-[11px] text-gray-500">{candidate.evidence[0] ?? candidate.reason}</div>
+                      <div className="mt-2 inline-flex overflow-hidden rounded-md border border-amber-200">
+                        {(['required', 'excluded'] as const).map((decision) => (
+                          <button
+                            key={decision}
+                            type="button"
+                            onClick={() => {
+                              setCandidateDecisions((current) => ({
+                                ...current,
+                                [candidate.candidate_id]: decision,
+                              }));
+                              setError(null);
+                            }}
+                            className={`px-2.5 py-1 text-[11px] font-semibold ${
+                              candidateDecisions[candidate.candidate_id] === decision
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-white text-gray-700'
+                            }`}
+                          >
+                            {decision === 'required' ? '列为必需' : '确认非必需'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tenderSpec && unverifiedMetaFields.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-gray-700">
+              <div className="font-semibold text-amber-800">关键项未在原文中可靠定位，需人工补录并确认</div>
+              {unverifiedMetaFields.map((field) => (
+                <label key={field} className="block space-y-1">
+                  <span className="font-medium text-gray-800">{field}</span>
+                  <input
+                    value={manualMeta[field] ?? tenderSpec.project_meta[field] ?? ''}
+                    onChange={(event) => {
+                      setManualMeta((current) => ({ ...current, [field]: event.target.value }));
+                      setError(null);
+                    }}
+                    placeholder={`请输入${field}`}
+                    className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(manualConfirmed[field])}
+                      onChange={(event) => {
+                        setManualConfirmed((current) => ({ ...current, [field]: event.target.checked }));
+                        setError(null);
+                      }}
+                    />
+                    我确认该值由人工核对补录，将写入正式交付文件。
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
           {!outline && !report && !exportPlan && (
             <div className="rounded-lg border border-blue-100 bg-white p-3 text-xs text-gray-700">
               该产物暂未配置专用审核视图，可展开原始 JSON 检查。
@@ -325,6 +516,15 @@ function isExportPlanArtifact(value: unknown): value is BackendExportPlan {
     value
       && typeof value === 'object'
       && Array.isArray((value as BackendExportPlan).volumes),
+  );
+}
+
+function isTenderSpecArtifact(value: unknown): value is BackendTenderSpec {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && (value as BackendTenderSpec).project_meta
+      && (value as BackendTenderSpec).export_plan,
   );
 }
 

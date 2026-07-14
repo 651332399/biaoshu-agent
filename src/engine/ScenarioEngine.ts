@@ -1,4 +1,4 @@
-import type { BackendCoverageReport, BackendExportPlan, BackendOutline, BackendReport, BackendRequirement } from './types';
+import type { BackendCoverageReport, BackendExportPlan, BackendOutline, BackendReport, BackendRequirement, BackendTenderSpec } from './types';
 import type { Focus, Scenario, Step, StepKind } from './demo/types';
 import { type Scheduler, realScheduler } from './scheduler';
 
@@ -19,6 +19,7 @@ export interface EngineState {
   pendingCard: Step | null;
   redlineOverrides: Record<string, 'pass' | 'warn' | 'fail'>;
   backendRequirements: BackendRequirement[];
+  backendTenderSpec: BackendTenderSpec | null;
   backendExportPlan: BackendExportPlan | null;
   backendOutline: BackendOutline | null;
   backendCoverage: BackendCoverageReport | null;
@@ -49,6 +50,7 @@ function initialState(): EngineState {
     pendingCard: null,
     redlineOverrides: {},
     backendRequirements: [],
+    backendTenderSpec: null,
     backendExportPlan: null,
     backendOutline: null,
     backendCoverage: null,

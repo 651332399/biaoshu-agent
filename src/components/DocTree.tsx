@@ -5,7 +5,7 @@ import { ScenarioEngine } from '../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../engine/sources';
 
 interface Props {
-  volumes: Volume[];
+  volumes: (Volume & { fileName?: string })[];
   requirements?: Requirement[];
   grownVolumes: string[];
   focus: Focus | null;
@@ -100,6 +100,11 @@ export function DocTree({ volumes, requirements = [], grownVolumes, focus, engin
                         <span className="inline-block mt-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded uppercase tracking-wider scale-90 origin-left">
                           ★ 独立密封
                         </span>
+                      )}
+                      {v.fileName && (
+                        <p className="mt-0.5 truncate text-[9px] font-mono text-gray-400" title={v.fileName}>
+                          {v.fileName}
+                        </p>
                       )}
                     </div>
                   </div>

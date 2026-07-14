@@ -9,6 +9,7 @@ import { PricingPanel } from '../PricingPanel';
 import { SelfCheckReport } from '../SelfCheckReport';
 import { RequirementListDoc } from './RequirementListDoc';
 import { AnnotationBubble } from './AnnotationBubble';
+import { ExportDialog } from '../ExportDialog';
 import type { EditorPhase } from './phase';
 
 interface Props {
@@ -63,7 +64,10 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
   if (phase === 'requirements') {
     return (
       <div className="flex-1 overflow-auto bg-[var(--canvas)] p-5 md:p-8 scroll-smooth">
-        <RequirementListDoc requirements={state.backendRequirements} />
+        <RequirementListDoc
+          requirements={state.backendRequirements}
+          progressMessage={state.logs[state.logs.length - 1]?.text}
+        />
       </div>
     );
   }
@@ -83,13 +87,28 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
     );
   }
 
-  // 生成 / 报价 / 导出:中央 = 标书正文纸张(行内芯片 + 正文旁批注)
+  // 导出打包阶段:中央 = 最终终审与打包导出页面(P6,流水线最后一阶段,无需返回)
+  if (phase === 'export') {
+    return (
+      <ExportDialog
+        scenario={scenario}
+        backendExportPlan={state.backendExportPlan}
+        backendOutline={state.backendOutline}
+        serverDocxUrl={state.serverPackageUrl || state.serverDocxUrl}
+        onConfirm={() => engine.confirmCheckpoint()}
+      />
+    );
+  }
+
+  // 生成 / 报价:中央 = 标书正文纸张(行内芯片 + 正文旁批注)
   if (!escalation) {
     return (
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {state.pricingRevealed && (
-          <div className="w-80 shrink-0 overflow-auto border-r border-slate-200 bg-white p-4">
-            <PricingPanel pricing={scenario.pricing} />
+          <div className="shrink-0 bg-[#e9eef5] px-6 pt-6">
+            <div className="mx-auto max-w-3xl">
+              <PricingPanel pricing={scenario.pricing} />
+            </div>
           </div>
         )}
         <PaperCanvas

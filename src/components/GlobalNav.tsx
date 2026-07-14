@@ -22,7 +22,7 @@ export function GlobalNav({ view, onNavigate }: Props) {
   return (
     <nav
       aria-label="全局导航"
-      className="w-16 shrink-0 h-full bg-[var(--surface)] border-r border-[var(--border)] flex flex-col items-center py-4 gap-1 z-20"
+      className="w-16 shrink-0 h-full bg-[#0f172a] flex flex-col items-center py-4 gap-1 z-20"
     >
       <div className="w-9 h-9 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center text-lg font-bold shadow-sm mb-4">
         ◆
@@ -38,8 +38,8 @@ export function GlobalNav({ view, onNavigate }: Props) {
               aria-current={active ? 'page' : undefined}
               className={`w-12 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-semibold transition-all cursor-pointer ${
                 active
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                  : 'text-[var(--muted)] hover:bg-gray-100 hover:text-gray-700'
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'text-slate-400 hover:bg-white/10 hover:text-slate-200'
               }`}
             >
               <span className="text-lg leading-none">{item.icon}</span>
@@ -49,7 +49,7 @@ export function GlobalNav({ view, onNavigate }: Props) {
         })}
       </div>
 
-      <div className="w-9 h-9 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+      <div className="w-9 h-9 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-sm font-bold shadow-sm">
         迈
       </div>
     </nav>

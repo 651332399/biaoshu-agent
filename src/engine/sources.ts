@@ -10,12 +10,14 @@ import {
 import type { EngineState } from './ScenarioEngine';
 import type {
   BackendAssetMatch,
+  BackendBlock,
   BackendExportPlan,
   BackendOutline,
   BackendProjectMeta,
   BackendReport,
   BackendRequirement,
   BackendSectionDraft,
+  BackendTenderSpec,
 } from './types';
 import type {
   DocBlockData,
@@ -34,7 +36,7 @@ export interface WorkspaceEngine {
   setSpeed(x: number): void;
   play(): void;
   pause(): void;
-  confirmCheckpoint(artifact?: unknown): void;
+  confirmCheckpoint(artifact?: unknown, confirmedFields?: ('项目编号' | '采购人')[]): void;
   chooseOption(index: number): void;
   provideSupplement(type: 'social' | 'pricing' | 'tax'): void;
   revealChapterManually(chapterId: string): void;
@@ -43,6 +45,67 @@ export interface WorkspaceEngine {
 }
 
 export type EventSourceFactory = (url: string) => EventSource;
+
+function isTenderSpec(value: unknown): value is BackendTenderSpec {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && (value as BackendTenderSpec).project_meta
+      && (value as BackendTenderSpec).export_plan,
+  );
+}
+
+/** llm 模式下 generate 节点走结构化 blocks 路径（content 留空，见
+ * BackendSectionDraft 注释）。一个 section 拆成多个 DocBlockData：连续的
+ * paragraph 合并成一个 prose 块，table 单独一个 render='table' 块交给
+ * PaperCanvas 的 Tiptap Table 扩展渲染成真表格（lib/blockDoc.ts:blockToNodes
+ * 已支持，此前这里把 table 拍扁成"| a | b |"纯文本塞进 prose，读不成表格）。
+ * blocks 为空（rules 模式/占位兜底）时退回单个 prose 块，用 content 兜底。 */
+function sectionDraftToDocBlocks(
+  idPrefix: string,
+  chapterId: string,
+  title: string,
+  blocks: BackendBlock[] | undefined,
+  fallbackContent: string,
+): DocBlockData[] {
+  if (!blocks?.length) {
+    return [{ id: idPrefix, chapterId, render: 'prose', 标题: title, prose: fallbackContent }];
+  }
+
+  const docBlocks: DocBlockData[] = [];
+  let proseBuffer: string[] = [];
+  const flushProse = () => {
+    if (proseBuffer.length === 0) return;
+    docBlocks.push({
+      id: `${idPrefix}-${docBlocks.length}`,
+      chapterId,
+      render: 'prose',
+      标题: docBlocks.length === 0 ? title : '',
+      prose: proseBuffer.join('\n\n'),
+    });
+    proseBuffer = [];
+  };
+
+  for (const block of blocks) {
+    if (block.kind === 'paragraph') {
+      proseBuffer.push(block.spans.map((span) => span.text).join(''));
+    } else if (block.kind === 'table') {
+      flushProse();
+      docBlocks.push({
+        id: `${idPrefix}-${docBlocks.length}`,
+        chapterId,
+        render: 'table',
+        标题: docBlocks.length === 0 ? title : '',
+        table: { headers: block.header, rows: block.rows },
+      });
+    } else if (block.caption) {
+      proseBuffer.push(block.caption);
+    }
+  }
+  flushProse();
+
+  return docBlocks.length ? docBlocks : [{ id: idPrefix, chapterId, render: 'prose', 标题: title, prose: '' }];
+}
 
 export function makeLiveScenario(): Scenario {
   return {
@@ -86,6 +149,7 @@ function liveInitialState(): EngineState {
     pendingCard: null,
     redlineOverrides: {},
     backendRequirements: [],
+    backendTenderSpec: null,
     backendExportPlan: null,
     backendOutline: null,
     backendCoverage: null,
@@ -149,7 +213,7 @@ export class LiveSource implements WorkspaceEngine {
       params.set('project_id', created.project_id);
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
       this.connectEvents();
-      await runProject(created.project_id, 'recorded');
+      await runProject(created.project_id, 'llm');
     } catch (error) {
       this.reportFailure('上传或启动流程失败', error);
     }
@@ -166,7 +230,9 @@ export class LiveSource implements WorkspaceEngine {
       if (remoteState.artifacts.includes('requirements.json')) {
         await this.applyArtifact('requirements', `/api/projects/${projectId}/artifacts/requirements.json`);
       }
-      if (remoteState.artifacts.includes('export_plan.json')) {
+      if (remoteState.artifacts.includes('tender_spec.json')) {
+        await this.applyArtifact('tender_spec', `/api/projects/${projectId}/artifacts/tender_spec.json`);
+      } else if (remoteState.artifacts.includes('export_plan.json')) {
         await this.applyArtifact('export_plan', `/api/projects/${projectId}/artifacts/export_plan.json`);
       }
       if (remoteState.artifacts.includes('outline.json')) {
@@ -245,15 +311,21 @@ export class LiveSource implements WorkspaceEngine {
       });
     });
     this.eventSource.onerror = () => {
+      if (this.eventSource?.readyState === EventSource.CONNECTING) {
+        // 浏览器正用 Last-Event-ID 自动重连，通常几秒内自愈，不打断用户。
+        return;
+      }
       this.state.status = 'paused';
-      this.state.error = 'SSE 连接中断，刷新页面后可从后端事件日志恢复。';
+      this.state.error = 'SSE 连接中断，正在重试…';
       this.emit();
+      setTimeout(() => this.connectEvents(), 1500);
     };
   }
 
   async handleEvent(name: string, event: MessageEvent<string>) {
     const numericId = Number(event.lastEventId || 0);
     if (numericId > 0) this.lastEventId = numericId;
+    if (this.state.error === 'SSE 连接中断，正在重试…') this.state.error = null;
     const data = event.data ? JSON.parse(event.data) as Record<string, unknown> : {};
     if (name === 'node_started') {
       this.state.activeStage = Number(data.stage_index ?? this.state.activeStage);
@@ -349,39 +421,41 @@ export class LiveSource implements WorkspaceEngine {
       };
       this.scenario.volumes = [volume];
       this.state.grownVolumes = [volume.id];
+    } else if (type === 'tender_spec') {
+      const tenderSpec = await getArtifact<BackendTenderSpec>(url);
+      this.state.backendTenderSpec = tenderSpec;
+      this.applyExportPlan(tenderSpec.export_plan);
     } else if (type === 'export_plan') {
       const exportPlan = await getArtifact<BackendExportPlan>(url);
-      this.state.backendExportPlan = exportPlan;
-      this.scenario.volumes = exportPlan.volumes.map((volume) => ({
-        id: volume.volume_id,
-        名称: volume.cover_title,
-        单独密封: volume.sealed_separately,
-        chapters: volume.section_ids.map((sectionId) => ({
-          id: sectionId,
-          标题: sectionId,
-          类型: '自撰区',
-          maps_to_requirement_ids: [],
-        })),
-      }));
-      this.state.grownVolumes = this.scenario.volumes.map((volume) => volume.id);
+      this.applyExportPlan(exportPlan);
     } else if (type === 'section_draft') {
       const draft = await getArtifact<BackendSectionDraft>(url);
       const index = this.resolveSectionIndex(draft, data);
-      const block: DocBlockData = {
-        id: `live-block-${index}`,
-        chapterId: draft.section_id || `live-chapter-${index}`,
-        render: 'prose',
-        标题: draft.title,
-        prose: draft.content,
-      };
-      // 按 index 幂等落位：断线补发/重跑同一章节时覆盖旧块而非追加
-      const existing = this.scenario.blocks.findIndex((item) => item.id === block.id);
-      this.scenario.blocks = existing >= 0
-        ? this.scenario.blocks.map((item, i) => (i === existing ? block : item))
-        : [...this.scenario.blocks, block];
-      this.state.revealedBlocks = this.state.revealedBlocks.includes(block.id)
-        ? this.state.revealedBlocks
-        : [...this.state.revealedBlocks, block.id];
+      const idPrefix = `live-block-${index}`;
+      const isOwnBlock = (id: string) => id === idPrefix || id.startsWith(`${idPrefix}-`);
+      const newBlocks = sectionDraftToDocBlocks(
+        idPrefix,
+        draft.section_id || `live-chapter-${index}`,
+        draft.title,
+        draft.blocks,
+        draft.content,
+      );
+      // 按 index 幂等落位：断线补发/重跑同一章节时整组替换旧的子块（旧版单块
+      // 时块数固定为 1，现在一个 section 可能拆成多个块，替换组的块数可能变化）。
+      const existingPos = this.scenario.blocks.findIndex((item) => isOwnBlock(item.id));
+      const withoutOld = this.scenario.blocks.filter((item) => !isOwnBlock(item.id));
+      if (existingPos >= 0) {
+        const insertAt = this.scenario.blocks
+          .slice(0, existingPos)
+          .filter((item) => !isOwnBlock(item.id)).length;
+        this.scenario.blocks = [...withoutOld.slice(0, insertAt), ...newBlocks, ...withoutOld.slice(insertAt)];
+      } else {
+        this.scenario.blocks = [...withoutOld, ...newBlocks];
+      }
+      this.state.revealedBlocks = [
+        ...this.state.revealedBlocks.filter((id) => !isOwnBlock(id)),
+        ...newBlocks.map((b) => b.id),
+      ];
     } else if (type === 'document_blocks') {
       const blocks = await getArtifact<DocBlockData[]>(url);
       this.scenario.blocks = blocks;
@@ -436,6 +510,33 @@ export class LiveSource implements WorkspaceEngine {
     }
   }
 
+  private applyExportPlan(exportPlan: BackendExportPlan) {
+    this.state.backendExportPlan = exportPlan;
+    // 章节标题/需求映射从 outline(cp2,先于 cp4 到达)解析,与 exportPlanView.ts
+    // 保持一致;缺 outline 时退回 section_id,避免结构树显示原始 id。
+    const sectionsById = new Map(
+      (this.state.backendOutline?.sections ?? []).map((section, index) => [
+        section.id || `live-chapter-${index + 1}`,
+        section,
+      ]),
+    );
+    this.scenario.volumes = exportPlan.volumes.map((volume) => ({
+      id: volume.volume_id,
+      名称: volume.cover_title,
+      单独密封: volume.sealed_separately,
+      chapters: volume.section_ids.map((sectionId) => {
+        const section = sectionsById.get(sectionId);
+        return {
+          id: sectionId,
+          标题: section?.title || sectionId,
+          类型: '自撰区' as const,
+          maps_to_requirement_ids: section?.maps_to_requirement_ids ?? [],
+        };
+      }),
+    }));
+    this.state.grownVolumes = this.scenario.volumes.map((volume) => volume.id);
+  }
+
   /** 章节定位优先级：事件 section_index > outline 标题匹配 > 追加序。到达顺序不可靠。 */
   private resolveSectionIndex(draft: BackendSectionDraft, data?: Record<string, unknown>): number {
     const fromEvent = Number(data?.section_index);
@@ -451,7 +552,10 @@ export class LiveSource implements WorkspaceEngine {
   play() {}
   pause() { this.state.status = 'paused'; this.emit(); }
 
-  async confirmCheckpoint(artifact?: unknown) {
+  async confirmCheckpoint(
+    artifact?: unknown,
+    confirmedFields: ('项目编号' | '采购人')[] = [],
+  ) {
     if (!this.projectId) return;
     if (this.state.pendingCard?.kind === 'export') {
       this.state.pendingCard = null;
@@ -469,14 +573,32 @@ export class LiveSource implements WorkspaceEngine {
     } else if (checkpoint === 3 && artifact) {
       this.state.backendReport = artifact as BackendReport;
     } else if (checkpoint === 4 && artifact) {
-      this.state.backendExportPlan = artifact as BackendExportPlan;
+      if (isTenderSpec(artifact)) {
+        this.state.backendTenderSpec = artifact;
+        this.applyExportPlan(artifact.export_plan);
+      } else {
+        const exportPlan = artifact as BackendExportPlan;
+        this.applyExportPlan(exportPlan);
+        if (this.state.backendTenderSpec) {
+          this.state.backendTenderSpec = { ...this.state.backendTenderSpec, export_plan: exportPlan };
+        }
+      }
     }
     this.emit();
     try {
-      if (artifact) {
-        await confirmProject(this.projectId, artifact, 'edit', checkpoint);
+      const submittedArtifact = checkpoint === 4 && artifact
+        ? this.state.backendTenderSpec
+        : artifact;
+      if (submittedArtifact) {
+        await confirmProject(
+          this.projectId,
+          submittedArtifact,
+          'edit',
+          checkpoint,
+          confirmedFields,
+        );
       } else {
-        await confirmProject(this.projectId, null, 'approve', checkpoint);
+        await confirmProject(this.projectId, null, 'approve', checkpoint, confirmedFields);
       }
     } catch (error) {
       this.reportFailure('提交确认点失败', error);

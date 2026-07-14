@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EngineState } from '../engine/ScenarioEngine';
 import type { DocBlockData, Scenario } from '../engine/demo/types';
 import { saveDocumentBlocks } from '../lib/api';
@@ -15,11 +15,12 @@ interface DocumentStore {
 }
 
 export function useDocumentStore(scenario: Scenario, state: EngineState): DocumentStore {
-  const projectId = useMemo(() => (
-    typeof window === 'undefined'
-      ? null
-      : new URLSearchParams(window.location.search).get('project_id')
-  ), []);
+  // 每次渲染都重新读 URL（不用 useMemo 空依赖冻结）：同一 tab 内不刷新页面切换项目时，
+  // project_id 会变，这里必须跟着变，否则 storageKey 卡在第一次挂载时的旧项目上，
+  // 旧项目缓存的 blocks 会串到新项目页面里。
+  const projectId = typeof window === 'undefined'
+    ? null
+    : new URLSearchParams(window.location.search).get('project_id');
   const storageKey = useMemo(() => {
     return `biaoshu.doc.${projectId ?? scenario.id}`;
   }, [projectId, scenario.id]);
@@ -31,6 +32,17 @@ export function useDocumentStore(scenario: Scenario, state: EngineState): Docume
   const [blocks, setBlocks] = useState<DocBlockData[]>(() => loadBlocks(storageKey) ?? visibleBlocks);
   const [dirtyBlocks, setDirtyBlocks] = useState<Set<string>>(() => loadSet(storageKey, 'dirty'));
   const [lockedBlocks, setLockedBlocks] = useState<Set<string>>(() => loadSet(storageKey, 'locked'));
+
+  // storageKey 真正变化（项目切换），说明上面的 state 是上一个项目遗留在内存里的，
+  // 不能让 mergeBlocks 把它们当"用户手改内容"保留下去——改读新项目自己的缓存。
+  const previousStorageKey = useRef(storageKey);
+  useEffect(() => {
+    if (previousStorageKey.current === storageKey) return;
+    previousStorageKey.current = storageKey;
+    setBlocks(loadBlocks(storageKey) ?? visibleBlocks);
+    setDirtyBlocks(loadSet(storageKey, 'dirty'));
+    setLockedBlocks(loadSet(storageKey, 'locked'));
+  }, [storageKey, visibleBlocks]);
 
   useEffect(() => {
     const protectedIds = new Set([...dirtyBlocks, ...lockedBlocks]);

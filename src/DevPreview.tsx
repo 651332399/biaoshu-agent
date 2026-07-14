@@ -66,6 +66,7 @@ function baseState(): EngineState {
     pendingCard: null,
     redlineOverrides: {},
     backendRequirements: REQS,
+    backendTenderSpec: null,
     backendExportPlan: null,
     backendOutline: null,
     backendCoverage: null,
@@ -150,7 +151,7 @@ export default function DevPreview() {
   const state = useMemo(() => stateForPhase(phase), [phase]);
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--canvas)] font-sans">
-      <EditorWorkspace state={state} scenario={kqyy} engine={noopEngine} onOpenLibrary={() => {}} onExport={() => {}} />
+      <EditorWorkspace state={state} scenario={kqyy} engine={noopEngine} onOpenLibrary={() => {}} />
     </div>
   );
 }

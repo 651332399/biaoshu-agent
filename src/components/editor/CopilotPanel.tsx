@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { Scenario } from '../../engine/demo/types';
+import { exportArtifactLabel, getDisplayVolumes } from '../../lib/exportPlanView';
 import { DecisionCard } from '../DecisionCard';
 import type { EditorPhase } from './phase';
 import { PHASE_LABEL } from './phase';
@@ -18,11 +19,19 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
   const [input, setInput] = useState('');
   const card = state.pendingCard;
   const isCheckpoint = card?.kind === 'checkpoint' || card?.kind === 'export';
+  const isEscalate = card?.kind === 'escalate';
 
   const checkpointArtifact = (() => {
     const id = card?.id;
     if (id === 'confirm-2' && state.backendOutline) return { label: '大纲 outline.json', value: state.backendOutline };
-    if (id === 'confirm-4' && state.backendExportPlan) return { label: '分册导出方案 export_plan.json', value: state.backendExportPlan };
+    if (id === 'confirm-4' && state.backendExportPlan) {
+      return {
+        label: state.backendTenderSpec
+          ? 'TenderSpec 分册方案（export_plan）'
+          : '分册导出方案 export_plan.json',
+        value: state.backendTenderSpec ?? state.backendExportPlan,
+      };
+    }
     if (id === 'confirm-3' && state.backendReport) return { label: '合规报告 report.json', value: state.backendReport };
     return undefined;
   })();
@@ -47,13 +56,13 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* 阻塞确认点:确认卡置顶 */}
-        {isCheckpoint && card && (
+        {/* 阻塞确认点/待决断:确认卡置顶,不依赖正文段落是否已渲染 */}
+        {(isCheckpoint || isEscalate) && card && (
           <DecisionCard
             card={card}
             requirements={card.id === 'confirm-1' ? state.backendRequirements : undefined}
             artifact={checkpointArtifact}
-            onConfirm={(artifact) => engine.confirmCheckpoint(artifact)}
+            onConfirm={(artifact, confirmedFields) => engine.confirmCheckpoint(artifact, confirmedFields)}
             onChoose={(i) => engine.chooseOption(i)}
           />
         )}
@@ -126,7 +135,6 @@ function GenerateSection({
   onOpenLibrary: () => void;
 }) {
   const lastLogs = state.logs.slice(-4);
-  const pending = state.pendingCard?.kind === 'escalate' ? state.pendingCard : null;
   return (
     <>
       <section className="rounded-xl border border-gray-100 bg-white p-3">
@@ -143,13 +151,6 @@ function GenerateSection({
           )}
         </ul>
       </section>
-
-      {pending && (
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <p className="text-[11px] font-bold text-amber-800 mb-1">⏸ 1 项待决断</p>
-          <p className="text-[11px] leading-relaxed text-amber-700">{pending.escalateTitle || pending.escalateBody}(见正文右侧批注)</p>
-        </section>
-      )}
 
       <section className="rounded-xl border border-gray-100 bg-white p-3">
         <div className="flex items-center justify-between mb-2">
@@ -222,21 +223,48 @@ function ReleaseSection({ state }: { state: EngineState }) {
 function ExportSummarySection({ state }: { state: EngineState }) {
   const plan = state.backendExportPlan;
   const downloadUrl = state.serverPackageUrl || state.serverDocxUrl;
-  const downloadLabel = state.serverPackageUrl
-    ? '🏆 下载分册打包 ZIP'
-    : '🏆 下载 Word (.docx)';
+  const downloadLabel = exportArtifactLabel(plan, downloadUrl);
+  const volumes = getDisplayVolumes(
+    {
+      id: 'kqyy',
+      meta: {
+        项目名: '',
+        采购人: '',
+        采购方式: '',
+        评审办法: '',
+        限价: 0,
+        报价: 0,
+        报价利用率: '',
+        保证金: 0,
+        服务周期: '',
+      },
+      strategy: { method: 'composite', 基调: '', 报价基调: '' },
+      volumes: [],
+      requirements: [],
+      mapping: [],
+      materials: [],
+      blocks: [],
+      redlines: [],
+      pricing: { lines: [], 限价: 0, 报价: 0, 利用率: '' },
+      steps: [],
+    },
+    plan,
+  );
   return (
     <section className="rounded-xl border border-gray-100 bg-white p-3">
       <p className="text-[11px] font-bold text-gray-700 mb-2">导出打包</p>
       {plan ? (
         <>
           <p className="text-[11px] text-gray-600 mb-2">
-            导出模式:{plan.output_mode};{plan.volumes.length} 个分册{plan.package_zip ? ',并打包 ZIP' : ''}。
+            导出模式:{plan.output_mode};{volumes.length} 个{plan.package_zip ? '分册 ZIP' : 'Word 文件'}。
           </p>
           <ul className="space-y-1">
-            {plan.volumes.map((v) => (
-              <li key={v.volume_id} className="text-[11px] text-gray-700 flex items-center gap-1.5">
-                📘 <span className="truncate">{v.cover_title}</span>
+            {volumes.map((v) => (
+              <li key={v.id} className="text-[11px] text-gray-700 flex items-center gap-1.5">
+                📘 <span className="truncate">{v.名称}</span>
+                <span className="ml-auto max-w-32 truncate font-mono text-[10px] text-gray-400" title={v.fileName}>
+                  {v.fileName}
+                </span>
               </li>
             ))}
           </ul>
@@ -250,7 +278,7 @@ function ExportSummarySection({ state }: { state: EngineState }) {
           download
           className="mt-3 block w-full text-center py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90"
         >
-          {downloadLabel}
+          🏆 {downloadLabel}
         </a>
       )}
     </section>

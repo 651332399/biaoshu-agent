@@ -217,6 +217,10 @@ export function PaperCanvas({
     });
   }, [blocks, isStreaming, streamText, writingBlockId]);
 
+  // 荧光笔只跟随"正在写"的块;流式结束(status≠playing)后清掉高亮,避免末章正文
+  // 一直泛黄的视觉残留。writingBlockId 本身仍保留给流式文本注入与"定位到正在写"滚动。
+  const highlightedBlockId = isStreaming ? writingBlockId : null;
+
   useEffect(() => {
     const block = blocks.find((item) => item.id === writingBlockId);
     if (!isStreaming || !block || block.render !== 'prose' || !block.prose || dirtyBlocks.has(block.id)) {
@@ -237,7 +241,7 @@ export function PaperCanvas({
 
   const editor = useEditor({
     extensions,
-    content: blocksToTiptapDoc(displayBlocks, { highlightedBlockId: writingBlockId, chips }),
+    content: blocksToTiptapDoc(displayBlocks, { highlightedBlockId, chips }),
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -268,7 +272,7 @@ export function PaperCanvas({
 
   useEffect(() => {
     if (!editor) return;
-    const nextDoc = blocksToTiptapDoc(displayBlocks, { highlightedBlockId: writingBlockId, chips });
+    const nextDoc = blocksToTiptapDoc(displayBlocks, { highlightedBlockId, chips });
     const nextKey = JSON.stringify(nextDoc);
     const currentKey = JSON.stringify(editor.getJSON());
     if (nextKey === currentKey || nextKey === lastDocRef.current) {
@@ -282,7 +286,7 @@ export function PaperCanvas({
     }
     editor.commands.setContent(nextDoc, { emitUpdate: false });
     lastDocRef.current = nextKey;
-  }, [displayBlocks, editor, writingBlockId, chips]);
+  }, [displayBlocks, editor, writingBlockId, highlightedBlockId, chips]);
 
   const focusWritingBlock = () => {
     if (!writingBlockId) return;

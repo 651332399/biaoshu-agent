@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useEngine } from './hooks/useEngine';
-import { makeLiveScenario } from './engine/sources';
 import { TopBar } from './components/TopBar';
 import { GlobalNav, type AppView } from './components/GlobalNav';
 import { EditorWorkspace } from './components/editor/EditorWorkspace';
 import { MaterialsLibrary } from './components/library/MaterialsLibrary';
 import { ProjectsList } from './components/projects/ProjectsList';
-import { ExportDialog } from './components/ExportDialog';
 import { UploadIntro } from './components/UploadIntro';
 
 export default function App() {
-  const [liveScenario] = useState(() => makeLiveScenario());
-  const scenario = liveScenario;
-
-  const { engine, state } = useEngine();
+  const { engine, state, scenario } = useEngine();
   const [view, setView] = useState<AppView>('editor');
   const [hasStarted, setHasStarted] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [seenExportCardId, setSeenExportCardId] = useState<string | null>(null);
 
   const handleStartWorkspace = (file: File | string) => {
     if (!(file instanceof File)) return;
@@ -25,14 +18,6 @@ export default function App() {
     setView('editor');
     void engine.startWithFile?.(file);
   };
-
-  // Stage 9 'export' step auto-opens the packager dialog
-  useEffect(() => {
-    if (state.pendingCard?.kind === 'export' && state.pendingCard.id !== seenExportCardId) {
-      setShowExportModal(true);
-      setSeenExportCardId(state.pendingCard.id);
-    }
-  }, [state.pendingCard, seenExportCardId]);
 
   // Restore an in-flight project from ?project_id
   useEffect(() => {
@@ -65,23 +50,10 @@ export default function App() {
               scenario={scenario}
               engine={engine}
               onOpenLibrary={() => setView('library')}
-              onExport={() => setShowExportModal(true)}
             />
           )}
         </main>
       </div>
-
-      {showExportModal && (
-        <ExportDialog
-          scenario={scenario}
-          serverDocxUrl={state.serverPackageUrl || state.serverDocxUrl}
-          onClose={() => setShowExportModal(false)}
-          onConfirm={() => {
-            setShowExportModal(false);
-            engine.confirmCheckpoint();
-          }}
-        />
-      )}
     </div>
   );
 }
