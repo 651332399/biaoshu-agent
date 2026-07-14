@@ -12,7 +12,10 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
   const [isParsing, setIsParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSupportedFile = (file: File) => /\.(pdf|doc|docx)$/i.test(file.name);
 
   const startScanning = (file: File | string) => {
     const fileName = typeof file === 'string' ? file : file.name;
@@ -44,6 +47,11 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
+      if (!isSupportedFile(file)) {
+        setToast('仅支持 PDF / DOC / DOCX 格式的招标文件');
+        return;
+      }
+      setToast(null);
       startScanning(file);
     }
   };
@@ -51,12 +59,26 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (!isSupportedFile(file)) {
+        setToast('仅支持 PDF / DOC / DOCX 格式的招标文件');
+        e.target.value = '';
+        return;
+      }
+      setToast(null);
       startScanning(file);
     }
   };
 
   const triggerFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  // input.click() 派发的 click 事件会冒泡回外层 div,若外层 onClick 也调用
+  // triggerFileSelect,会再次触发 .click() 形成死循环(表现为文件选择框
+  // 点取消/关闭后又立刻重新弹出,像"关不掉")。这里挡掉冒泡上来的那次。
+  const handleZoneClick = (e: React.MouseEvent) => {
+    if (e.target === fileInputRef.current) return;
+    triggerFileSelect();
   };
 
   const quickStart = () => {
@@ -84,6 +106,13 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
           请上传招标文件（支持 PDF / DOC / DOCX / 扫描件 OCR），后端将自动解析、映射并生成投标响应文件与自检报告。
         </p>
 
+        {toast && (
+          <div className="mb-5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-700 flex items-start justify-between gap-3 text-left">
+            <span>{toast}</span>
+            <button onClick={() => setToast(null)} className="text-amber-400 hover:text-amber-600 shrink-0">✕</button>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {!isParsing ? (
             <motion.div
@@ -98,7 +127,7 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
-                onClick={triggerFileSelect}
+                onClick={handleZoneClick}
                 className={`border-2 border-dashed rounded-2xl p-8 md:p-10 cursor-pointer transition-all ${
                   isDragActive
                     ? 'border-[var(--accent)] bg-[var(--accent-soft)] scale-102'
@@ -108,7 +137,7 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/octet-stream"
                   className="hidden"
                   onChange={handleFileChange}
                 />
