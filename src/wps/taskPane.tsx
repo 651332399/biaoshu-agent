@@ -2,9 +2,10 @@
 //
 // 形态锚定 tasks/wps-addon-end-to-end-flow-2026-08-18.md §8.3：**薄加载项**。
 // 窗格只做「一键上传 + 只读进度 + 排版执行 + 证据回传」，对话 / 确认点 /
-// 要求清单留在浏览器 Copilot 里。不要往这里搬编辑器组件。
+// 要求清单留在浏览器 Copilot 里。不要往这里搬编辑器组件，也不要加任何
+// 推进流水线的按钮——确认点是浏览器的事。
 
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getRuntime } from '../platform/capabilities';
 import type { ClientCapabilities } from '../platform/RuntimeAdapter';
@@ -17,6 +18,7 @@ import {
   writeUploadMemo,
   type UploadOutcome,
 } from './uploadCurrentDocument';
+import { initialProgress, subscribeProgress, type ProgressState } from './progress';
 
 // 窗格与后端不同源（窗格在 3889），基地址必须显式给。
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://127.0.0.1:8000';
@@ -25,6 +27,13 @@ const BROWSER_BASE = (import.meta.env.VITE_BROWSER_BASE as string | undefined) ?
 setApiBase(API_BASE);
 
 const PANE_WIDTH_HINT = 360;
+
+const CHECKPOINT_LABELS: Record<number, string> = {
+  1: '核对要求清单',
+  2: '确认大纲',
+  3: '确认生成结果与合规报告',
+  4: '确认交付结构',
+};
 
 type Phase = 'idle' | 'working' | 'done' | 'error';
 
@@ -37,17 +46,41 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function NodeList({ progress }: { progress: ProgressState }) {
+  const marks = { done: '✓', running: '▶', pending: '·' } as const;
+  const colors = { done: '#0a0', running: '#1a56db', pending: '#bbb' } as const;
+  return (
+    <div style={{ fontSize: 12, lineHeight: 1.9 }}>
+      {progress.nodes.map((node) => (
+        <div key={node.node} style={{ display: 'flex', gap: 8, color: colors[node.status] }}>
+          <span style={{ width: 12 }}>{marks[node.status]}</span>
+          <span>{node.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TaskPane() {
   const [caps, setCaps] = useState<ClientCapabilities | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [outcome, setOutcome] = useState<UploadOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ProgressState>(initialProgress);
+  const unsubscribe = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     getRuntime()
       .capabilities()
       .then(setCaps)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    return () => unsubscribe.current?.();
+  }, []);
+
+  const watch = useCallback((projectId: string) => {
+    unsubscribe.current?.();
+    setProgress(initialProgress());
+    unsubscribe.current = subscribeProgress(projectId, setProgress);
   }, []);
 
   async function onUpload() {
@@ -66,9 +99,20 @@ function TaskPane() {
       });
       setOutcome(result);
       setPhase('done');
+      watch(result.projectId);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase('error');
+    }
+  }
+
+  const browserUrl = outcome ? `${BROWSER_BASE}/?project_id=${outcome.projectId}` : '';
+
+  async function onOpenBrowser() {
+    try {
+      await getRuntime().openInBrowser(browserUrl);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -110,11 +154,63 @@ function TaskPane() {
           </div>
           <Row label="文档" value={outcome.name} />
           <Row label="项目" value={outcome.projectId} />
-          <Row label="sha256" value={`${outcome.sha256.slice(0, 16)}…`} />
-          <div style={{ marginTop: 8, color: '#666' }}>
-            去浏览器过确认点：
-            <div style={{ wordBreak: 'break-all' }}>{`${BROWSER_BASE}/?project=${outcome.projectId}`}</div>
+
+          <div style={{ marginTop: 10 }}>
+            <NodeList progress={progress} />
           </div>
+
+          {progress.message && (
+            <div style={{ marginTop: 6, color: '#666' }}>{progress.message}</div>
+          )}
+
+          {progress.phase === 'awaiting_confirm' && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: 10,
+                background: '#fff7e6',
+                border: '1px solid #ffd591',
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>
+                确认点 {progress.checkpoint ?? '?'} 待处理
+                {progress.checkpoint ? ` · ${CHECKPOINT_LABELS[progress.checkpoint] ?? ''}` : ''}
+              </div>
+              <div style={{ color: '#666', margin: '4px 0 8px' }}>
+                确认在浏览器里完成，本窗格不提供推进按钮。
+              </div>
+              <button
+                type="button"
+                onClick={() => void onOpenBrowser()}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  background: '#fa8c16',
+                  color: '#fff',
+                  border: 0,
+                  borderRadius: 4,
+                }}
+              >
+                去浏览器确认
+              </button>
+            </div>
+          )}
+
+          {progress.phase === 'server_precheck_done' && (
+            <div style={{ marginTop: 10, color: '#666' }}>
+              服务器预检已结束。<b>尚未交付</b>——还需在 WPS 里更新域、导 PDF、回传证据，
+              由服务器判定验收（P2）。
+            </div>
+          )}
+
+          {progress.error && (
+            <div style={{ marginTop: 10, color: '#b00' }}>{progress.error}</div>
+          )}
+
+          <div style={{ marginTop: 10, color: '#666', wordBreak: 'break-all' }}>{browserUrl}</div>
         </div>
       )}
 
@@ -128,6 +224,7 @@ function TaskPane() {
         <>
           <Row label="运行时" value={caps.runtime} />
           <Row label="可读文档字节" value={caps.readActiveDocumentBytes ? '是' : '否'} />
+          <Row label="可开浏览器" value={caps.openInBrowser ? '是' : '否'} />
           <Row label="可驱动排版" value={caps.documentAutomation ? '是' : '否（P2）'} />
           <Row label="应用版本" value={caps.appVersion} />
           <Row label="后端" value={API_BASE} />
@@ -135,11 +232,6 @@ function TaskPane() {
       )}
 
       {!caps && !error && <div style={{ fontSize: 12, color: '#666' }}>正在自检…</div>}
-
-      <p style={{ fontSize: 12, color: '#666', marginTop: 16, lineHeight: 1.6 }}>
-        对话、要求确认与合规报告在浏览器里完成，本窗格只负责上传当前文档、显示进度，
-        以及后续的排版落地与证据回传。
-      </p>
     </div>
   );
 }

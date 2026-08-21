@@ -22,6 +22,7 @@ export class BrowserRuntime implements RuntimeAdapter {
       runtime: 'browser',
       readActiveDocumentBytes: false,
       documentAutomation: false,
+      openInBrowser: true,
       osVersion: ua,
       appVersion: ua,
     };
@@ -29,6 +30,10 @@ export class BrowserRuntime implements RuntimeAdapter {
 
   async readActiveDocumentBytes(): Promise<ActiveDocumentBytes> {
     throw new RuntimeNotImplementedError('readActiveDocumentBytes', 'browser');
+  }
+
+  async openInBrowser(url: string): Promise<void> {
+    window.open(url, '_blank', 'noopener');
   }
 
   async openDocument(_source: DownloadDescriptor): Promise<OpenDocumentResult> {

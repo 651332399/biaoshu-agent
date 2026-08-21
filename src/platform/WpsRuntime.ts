@@ -33,6 +33,8 @@ export interface WpsFileSystemLike {
 export interface WpsDocumentLike {
   Name: string;
   FullName: string;
+  /** 把 URL 交给系统默认浏览器。见下方 openInBrowser 的实测记录。 */
+  FollowHyperlink(url: string): void;
 }
 
 export interface WpsGlobalLike {
@@ -71,6 +73,7 @@ export class WpsRuntime implements RuntimeAdapter {
       runtime: 'wps',
       readActiveDocumentBytes: typeof wps?.FileSystem?.ReadFileAsArrayBuffer === 'function',
       documentAutomation: false, // P2 落地更新域/另存/导 PDF 后翻为 true
+      openInBrowser: typeof wps?.ActiveDocument?.FollowHyperlink === 'function',
       osVersion: ua,
       appVersion,
     };
@@ -104,6 +107,27 @@ export class WpsRuntime implements RuntimeAdapter {
     }
 
     return { name: doc.Name, fullName, bytes, fingerprint };
+  }
+
+  /**
+   * 2026-08-21 在兆芯 UOS + WPS 12.8.2.21176 上逐个实测，三条路只有一条通：
+   *
+   * | 手段 | 结果 |
+   * |---|---|
+   * | `OAAssist.ShellExecute(url)` | ⛔ 返回 null、不抛错、**什么都不做** |
+   * | `window.open(url)` | ⛔ `handle=null`，CEF 拦掉 |
+   * | `ActiveDocument.FollowHyperlink(url)` | ✅ 拉起系统默认浏览器 |
+   *
+   * `OAAssist` 整层成员是 `DownloadFile/UploadFile/ShellExecute/COMAddinsExecute/
+   * CoCreateInstance/WebNotify`，全是 COM 味的 Windows 接口，Linux 上是空壳。
+   * **官方脚手架 util.js 用的就是 ShellExecute——照抄会静默失效，别再换回去。**
+   */
+  async openInBrowser(url: string): Promise<void> {
+    const doc = requireWpsGlobal().ActiveDocument;
+    if (typeof doc?.FollowHyperlink !== 'function') {
+      throw new Error('当前 WPS 不提供 Document.FollowHyperlink，无法打开浏览器');
+    }
+    doc.FollowHyperlink(url);
   }
 
   async openDocument(_source: DownloadDescriptor): Promise<OpenDocumentResult> {

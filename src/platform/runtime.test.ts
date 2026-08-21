@@ -10,7 +10,11 @@ function stubWps(overrides: Record<string, unknown> = {}) {
   const wps = {
     Version: '12.0',
     Build: '12.8.2.21176',
-    ActiveDocument: { Name: 'tender.docx', FullName: '/home/CMCC/tender.docx' },
+    ActiveDocument: {
+      Name: 'tender.docx',
+      FullName: '/home/CMCC/tender.docx',
+      FollowHyperlink: vi.fn(),
+    },
     FileSystem: {
       Exists: () => true,
       ReadFileAsArrayBuffer: () => bytes,
@@ -64,6 +68,7 @@ describe('WpsRuntime', () => {
     expect(caps.runtime).toBe('wps');
     expect(caps.readActiveDocumentBytes).toBe(true);
     expect(caps.appVersion).toBe('12.0 / 12.8.2.21176');
+    expect(caps.openInBrowser).toBe(true);
     // P2 才落地更新域/另存/导 PDF，现在必须还是 false
     expect(caps.documentAutomation).toBe(false);
   });
@@ -111,6 +116,19 @@ describe('WpsRuntime', () => {
     expect(result.fingerprint).toBeNull();
     expect(result.bytes.byteLength).toBe(4);
     expect(bytes.byteLength).toBe(8); // stub 的默认 buffer 没被用到
+  });
+
+  // OAAssist.ShellExecute 在 Linux 上静默失效（实测），只有 FollowHyperlink 通
+  test('openInBrowser 走 Document.FollowHyperlink', async () => {
+    const { wps } = stubWps();
+    await new WpsRuntime().openInBrowser('http://localhost:3000/?project_id=p1');
+    const doc = (wps as { ActiveDocument: { FollowHyperlink: ReturnType<typeof vi.fn> } }).ActiveDocument;
+    expect(doc.FollowHyperlink).toHaveBeenCalledWith('http://localhost:3000/?project_id=p1');
+  });
+
+  test('没有打开文档时报错，不静默吞掉', async () => {
+    stubWps({ ActiveDocument: null });
+    await expect(new WpsRuntime().openInBrowser('http://x')).rejects.toThrow('FollowHyperlink');
   });
 
   test('P2 的文档操作仍是显式未实现', async () => {

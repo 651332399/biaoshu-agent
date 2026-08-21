@@ -27,6 +27,8 @@ export interface ClientCapabilities {
   readActiveDocumentBytes: boolean;
   /** 能驱动真排版引擎：更新域 / 另存 / 按真实分页导 PDF。 */
   documentAutomation: boolean;
+  /** 能把 URL 交给系统默认浏览器打开。 */
+  openInBrowser: boolean;
   /** 取自 UA；进 font_inventory.os_version。 */
   osVersion: string;
   /** WPS 是 `Application.Version`/`Build`；浏览器是 UA。进 font_inventory.wps_version。 */
@@ -91,6 +93,11 @@ export interface RuntimeAdapter {
   capabilities(): Promise<ClientCapabilities>;
   /** P1：一键上传当前打开的招标文件。 */
   readActiveDocumentBytes(): Promise<ActiveDocumentBytes>;
+  /**
+   * 用系统默认浏览器打开 URL。确认点在浏览器 Copilot 里过（§8.3），
+   * 窗格需要把用户送过去——这是运行时能力，不是业务逻辑，所以归 adapter。
+   */
+  openInBrowser(url: string): Promise<void>;
   openDocument(source: DownloadDescriptor): Promise<OpenDocumentResult>;
   updateAllFields(): Promise<FieldUpdateResult>;
   saveFinalDocx(target: SaveTarget): Promise<LocalArtifact>;
