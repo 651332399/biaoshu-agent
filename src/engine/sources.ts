@@ -1,9 +1,14 @@
 import {
+  acceptChatProposal,
   confirmProject,
   escalateProject,
   getArtifact,
+  getProjectChat,
   getProjectState,
+  rejectChatProposal,
   runProject,
+  sendProjectChat,
+  uploadMaterial,
   uploadProject,
   type ProjectEscalation,
 } from '../lib/api';
@@ -18,13 +23,18 @@ import type {
   BackendRequirement,
   BackendSectionDraft,
   BackendTenderSpec,
+  ChatProposal,
+  ChatTailState,
+  ChatTurn,
 } from './types';
+import { createEmptyChatState } from './types';
 import type {
   DocBlockData,
   Scenario,
   Step,
   Volume,
 } from './demo/types';
+import { apiUrl } from '../lib/apiBase';
 
 export interface WorkspaceEngine {
   getState(): EngineState;
@@ -36,12 +46,18 @@ export interface WorkspaceEngine {
   setSpeed(x: number): void;
   play(): void;
   pause(): void;
-  confirmCheckpoint(artifact?: unknown, confirmedFields?: ('项目名' | '项目编号' | '采购人')[]): void;
+  confirmCheckpoint(
+    artifact?: unknown,
+    confirmedFields?: ('项目名' | '项目编号' | '采购人')[],
+    saveAsTemplate?: boolean,
+  ): void;
   chooseOption(index: number): void;
   provideSupplement(type: 'social' | 'pricing' | 'tax'): void;
   revealChapterManually(chapterId: string): void;
   revealVolumeManually(volumeId: string): void;
-  addCustomUserMessage(text: string, files?: { name: string; type: string }[]): void;
+  addCustomUserMessage(text: string, files?: File[] | { name: string; type: string }[]): void;
+  acceptProposal?(proposalId: string): void;
+  rejectProposal?(proposalId: string): void;
 }
 
 export type EventSourceFactory = (url: string) => EventSource;
@@ -170,6 +186,7 @@ function liveInitialState(): EngineState {
     serverPackageUrl: null,
     error: null,
     mode: 'live',
+    chat: createEmptyChatState(),
   };
 }
 
@@ -178,7 +195,9 @@ export class LiveSource implements WorkspaceEngine {
   private listeners = new Set<(s: EngineState) => void>();
   private projectId: string | null = null;
   private eventSource: EventSource | null = null;
+  private chatEventSource: EventSource | null = null;
   private lastEventId = 0;
+  private lastChatEventId = 0;
   private currentEscalation: ProjectEscalation | null = null;
 
   constructor(
@@ -202,9 +221,12 @@ export class LiveSource implements WorkspaceEngine {
 
   reset() {
     this.eventSource?.close();
+    this.chatEventSource?.close();
     this.eventSource = null;
+    this.chatEventSource = null;
     this.projectId = null;
     this.lastEventId = 0;
+    this.lastChatEventId = 0;
     this.currentEscalation = null;
     this.scenario.volumes = [];
     this.scenario.blocks = [];
@@ -225,6 +247,7 @@ export class LiveSource implements WorkspaceEngine {
       params.set('project_id', created.project_id);
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
       this.connectEvents();
+      this.connectChatEvents();
       await runProject(created.project_id, 'llm');
     } catch (error) {
       this.reportFailure('上传或启动流程失败', error);
@@ -285,6 +308,8 @@ export class LiveSource implements WorkspaceEngine {
         this.state.status = 'awaiting';
       }
       this.connectEvents();
+      this.connectChatEvents();
+      await this.loadChatHistory();
       this.emit();
     } catch (error) {
       this.reportFailure('从后端恢复项目失败', error);
@@ -307,7 +332,7 @@ export class LiveSource implements WorkspaceEngine {
     if (!this.projectId) return;
     const suffix = this.lastEventId > 0 ? `?last_event_id=${this.lastEventId}` : '';
     this.eventSource?.close();
-    this.eventSource = this.eventSourceFactory(`/api/projects/${this.projectId}/events${suffix}`);
+    this.eventSource = this.eventSourceFactory(apiUrl(`/api/projects/${this.projectId}/events${suffix}`));
     const names = [
       'run_started',
       'node_started',
@@ -337,19 +362,207 @@ export class LiveSource implements WorkspaceEngine {
     };
   }
 
+  private connectChatEvents() {
+    if (!this.projectId || this.chatEventSource) return;
+    const suffix = this.lastChatEventId > 0 ? `?last_event_id=${this.lastChatEventId}` : '';
+    this.chatEventSource = this.eventSourceFactory(apiUrl(`/api/projects/${this.projectId}/chat/events${suffix}`));
+    for (const name of ['chat_message', 'chat_proposal', 'chat_proposal_resolved']) {
+      this.chatEventSource.addEventListener(name, (event) => {
+        this.handleChatEvent(name, event as MessageEvent<string>);
+      });
+    }
+    this.chatEventSource.onerror = () => {
+      if (this.chatEventSource?.readyState === EventSource.CONNECTING) return;
+      this.chatEventSource?.close();
+      this.chatEventSource = null;
+      setTimeout(() => this.connectChatEvents(), 1500);
+    };
+  }
+
+  private async loadChatHistory(after?: string) {
+    if (!this.projectId) return;
+    try {
+      const history = await getProjectChat(this.projectId, after);
+      this.applyChatTurns(history.turns);
+      for (const proposal of history.proposals ?? []) this.applyChatProposal(proposal);
+      this.state.chat = { ...this.state.chat, tailState: history.tail_state };
+      this.applyTailState(history.tail_state);
+    } catch (error) {
+      void error;
+    }
+  }
+
+  private handleChatEvent(name: string, event: MessageEvent<string>) {
+    const numericId = Number(event.lastEventId || 0);
+    if (numericId > 0) this.lastChatEventId = numericId;
+    const data = event.data ? JSON.parse(event.data) as Record<string, unknown> : {};
+    if (name === 'chat_message') {
+      const turn = data.turn && typeof data.turn === 'object'
+        ? data.turn as ChatTurn
+        : this.findTurn(String(data.turn_id ?? ''));
+      if (turn) {
+        this.applyChatTurns([turn]);
+      } else if (this.projectId) {
+        const after = this.state.chat.messages.at(-1)?.turn_id;
+        void this.loadChatHistory(after);
+      }
+      const role = String(data.role ?? turn?.role ?? '');
+      this.state.chat = {
+        ...this.state.chat,
+        tailState: role === 'user' ? 'processing' : 'answered',
+        sending: role === 'user',
+        pendingClientMessageId: role === 'user' ? this.state.chat.pendingClientMessageId : null,
+      };
+    } else if (name === 'chat_proposal') {
+      const proposal = this.proposalFromEventData(data);
+      if (proposal) this.applyChatProposal(proposal);
+      void this.loadChatHistory();
+    } else if (name === 'chat_proposal_resolved') {
+      const proposal = this.proposalFromEventData(data);
+      if (proposal) {
+        this.applyChatProposal(proposal);
+      } else {
+        const proposalId = String(data.proposal_id ?? '');
+        const status = data.status === 'accepted' || data.status === 'rejected' || data.status === 'stale'
+          ? data.status
+          : null;
+        if (proposalId && status) {
+          this.state.chat = {
+            ...this.state.chat,
+            proposals: this.state.chat.proposals.map((item) =>
+              item.proposal_id === proposalId ? { ...item, status } : item,
+            ),
+          };
+        }
+      }
+    }
+    this.emit();
+  }
+
+  private findTurn(turnId: string): ChatTurn | null {
+    return this.state.chat.messages.find((turn) => turn.turn_id === turnId) ?? null;
+  }
+
+  private applyChatTurns(turns: ChatTurn[]) {
+    if (turns.length === 0) return;
+    const existing = new Set(this.state.chat.messages.map((turn) => turn.turn_id));
+    let merged = [...this.state.chat.messages];
+    for (const turn of turns) {
+      if (turn.client_message_id) {
+        merged = merged.filter((item) =>
+          !(item.turn_id.startsWith('pending-') && item.client_message_id === turn.client_message_id),
+        );
+      }
+      if (!existing.has(turn.turn_id)) {
+        merged.push(turn);
+        existing.add(turn.turn_id);
+      }
+    }
+    this.state.chat = {
+      ...this.state.chat,
+      messages: merged,
+      pendingClientMessageId: null,
+      sending: false,
+    };
+  }
+
+  private applyChatProposal(proposal: ChatProposal) {
+    const proposals = this.state.chat.proposals.some((item) => item.proposal_id === proposal.proposal_id)
+      ? this.state.chat.proposals.map((item) => item.proposal_id === proposal.proposal_id ? proposal : item)
+      : [...this.state.chat.proposals, proposal];
+    this.state.chat = { ...this.state.chat, proposals };
+  }
+
+  private proposalFromEventData(data: Record<string, unknown>): ChatProposal | null {
+    if (data.proposal && typeof data.proposal === 'object') return data.proposal as ChatProposal;
+    const proposalId = String(data.proposal_id ?? '');
+    const turnId = String(data.turn_id ?? '');
+    if (!proposalId || !turnId) return null;
+    const existing = this.state.chat.proposals.find((item) => item.proposal_id === proposalId);
+    if (existing) return existing;
+    return {
+      proposal_id: proposalId,
+      turn_id: turnId,
+      target_artifact: data.target_artifact === 'outline' || data.target_artifact === 'tender_spec'
+        ? data.target_artifact
+        : 'requirements',
+      checkpoint: data.target_artifact === 'outline' ? 2 : data.target_artifact === 'tender_spec' ? 4 : 1,
+      base_fingerprint: '',
+      result_fingerprint: '',
+      patch: [],
+      op_targets: [],
+      diff: [],
+      summary: String(data.summary ?? '对话提案已生成，请在完整历史对账后核对。'),
+      status: 'proposed',
+      created_by: '',
+      created_at: new Date().toISOString(),
+      resolved_by: null,
+      resolved_at: null,
+    };
+  }
+
+  private applyTailState(tailState: ChatTailState) {
+    if (tailState === 'processing') {
+      this.state.chat = { ...this.state.chat, sending: true, tailState };
+    } else if (tailState === 'interrupted') {
+      this.state.chat = { ...this.state.chat, sending: false, tailState, pendingClientMessageId: null };
+      this.state.error = '上一条对话在服务端中断，请重新发送。';
+    } else {
+      this.state.chat = { ...this.state.chat, sending: false, tailState, pendingClientMessageId: null };
+    }
+  }
+
+  private makePendingTurn(text: string, clientMessageId: string, materialIds: string[]): ChatTurn {
+    return {
+      turn_id: `pending-${clientMessageId}`,
+      client_message_id: clientMessageId,
+      role: 'user',
+      text,
+      intent: null,
+      pipeline_state: this.pipelineStateLabel(),
+      context_fingerprint: '',
+      context_turn_ids: [],
+      context_stale: false,
+      citations: [],
+      proposal_id: null,
+      escalation_proposal: null,
+      material_ids: materialIds,
+      created_by: 'local',
+      model_id: null,
+      llm_response_digest: null,
+      ts: new Date().toISOString(),
+    };
+  }
+
+  private pipelineStateLabel(): string {
+    if (this.state.pendingCard?.kind === 'checkpoint') {
+      return `checkpoint:${this.state.pendingCard.id.replace('confirm-', '')}`;
+    }
+    if (this.state.pendingCard?.kind === 'escalate') return 'escalation';
+    if (this.state.status === 'playing') return `running:${this.state.activeStage || 'unknown'}`;
+    return 'idle';
+  }
+
   async handleEvent(name: string, event: MessageEvent<string>) {
     const numericId = Number(event.lastEventId || 0);
     if (numericId > 0) this.lastEventId = numericId;
     if (this.state.error === 'SSE 连接中断，正在重试…') this.state.error = null;
     const data = event.data ? JSON.parse(event.data) as Record<string, unknown> : {};
-    if (name === 'node_started') {
+    if (name === 'run_started') {
+      this.state.error = null;
+      this.state.status = 'playing';
+      this.state.logs = this.state.logs.filter((log) => !log.id.startsWith('err-') && !log.id.startsWith('client-err-'));
+    } else if (name === 'node_started') {
       this.state.activeStage = Number(data.stage_index ?? this.state.activeStage);
       this.state.status = 'playing';
+      this.state.error = null;
+      this.state.logs = this.state.logs.filter((log) => !log.id.startsWith('err-') && !log.id.startsWith('client-err-'));
     } else if (name === 'node_progress') {
+      const progressId = `progress-${String((data.node ?? this.state.activeStage) || 'current')}`;
       this.state.logs = [
-        ...this.state.logs,
+        ...this.state.logs.filter((log) => log.id !== progressId),
         {
-          id: `evt-${this.lastEventId}`,
+          id: progressId,
           text: String(data.message ?? ''),
           stage: this.state.activeStage || 1,
         },
@@ -397,8 +610,8 @@ export class LiveSource implements WorkspaceEngine {
         kind: 'export',
         stage: 9,
         duration: 0,
-        checkpointTitle: '全流程完成',
-        checkpointBody: '后端已生成 bid.docx，可从产物接口下载正式 Word 文件。',
+        checkpointTitle: '服务器预检已结束',
+        checkpointBody: '当前产物待 WPS 更新域、回传证据并完成最终验收。',
       } as Step;
     }
     this.emit();
@@ -509,8 +722,8 @@ export class LiveSource implements WorkspaceEngine {
       const assets = await getArtifact<BackendAssetMatch[]>(url);
       this.scenario.materials = assets.map((item) => ({
         id: item.asset_id,
-        category: 'record' as const,
-        名称: item.section_title ?? item.content.slice(0, 24) ?? item.asset_id,
+        category: item.category ?? 'record' as const,
+        名称: item.material_name ?? item.section_title ?? item.content.slice(0, 24) ?? item.asset_id,
         命中: true,
       }));
       this.state.matchedMaterials = assets.map((item) => item.asset_id);
@@ -576,6 +789,7 @@ export class LiveSource implements WorkspaceEngine {
   async confirmCheckpoint(
     artifact?: unknown,
     confirmedFields: ('项目名' | '项目编号' | '采购人')[] = [],
+    saveAsTemplate = false,
   ) {
     if (!this.projectId) return;
     if (this.state.pendingCard?.kind === 'export') {
@@ -617,9 +831,17 @@ export class LiveSource implements WorkspaceEngine {
           'edit',
           checkpoint,
           confirmedFields,
+          saveAsTemplate,
         );
       } else {
-        await confirmProject(this.projectId, null, 'approve', checkpoint, confirmedFields);
+        await confirmProject(
+          this.projectId,
+          null,
+          'approve',
+          checkpoint,
+          confirmedFields,
+          saveAsTemplate,
+        );
       }
     } catch (error) {
       this.reportFailure('提交确认点失败', error);
@@ -664,7 +886,14 @@ export class LiveSource implements WorkspaceEngine {
     return '确认点 1: 招标要求核对';
   }
 
-  provideSupplement() {}
+  provideSupplement(type: 'social' | 'pricing' | 'tax') {
+    const labels = {
+      social: '补充项目团队近 3 个月在保社保证明',
+      pricing: '补充分项报价精算对标试算表',
+      tax: '补充近半年依法纳税凭证',
+    };
+    this.addCustomUserMessage(labels[type]);
+  }
   revealChapterManually(chapterId: string) {
     this.state.focus = { ...this.state.focus, chapter: chapterId };
     this.emit();
@@ -673,11 +902,108 @@ export class LiveSource implements WorkspaceEngine {
     this.state.focus = { ...this.state.focus, volume: volumeId };
     this.emit();
   }
-  addCustomUserMessage(text: string) {
-    this.state.logs = [
-      ...this.state.logs,
-      { id: `user-${Date.now()}`, text: `用户指示: ${text}`, stage: this.state.activeStage || 1 },
-    ];
+  async addCustomUserMessage(text: string, files: File[] | { name: string; type: string }[] = []) {
+    if (!this.projectId) {
+      this.state.logs = [
+        ...this.state.logs,
+        { id: `user-${Date.now()}`, text: `用户指示: ${text}`, stage: this.state.activeStage || 1 },
+      ];
+      this.emit();
+      return;
+    }
+    this.connectChatEvents();
+    const clientMessageId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (token) => {
+        const value = Math.floor(Math.random() * 16);
+        return (token === 'x' ? value : (value & 0x3) | 0x8).toString(16);
+      });
+    this.state.error = null;
+    this.state.chat = {
+      ...this.state.chat,
+      sending: true,
+      tailState: 'processing',
+      pendingClientMessageId: clientMessageId,
+    };
+    this.applyChatTurns([this.makePendingTurn(text, clientMessageId, files.map((file) => file.name))]);
     this.emit();
+    try {
+      const materialIds = await this.uploadChatAttachments(files);
+      if (materialIds.length > 0) {
+        this.state.chat = {
+          ...this.state.chat,
+          messages: this.state.chat.messages.map((turn) =>
+            turn.client_message_id === clientMessageId ? { ...turn, material_ids: materialIds } : turn,
+          ),
+        };
+      }
+      const response = await sendProjectChat(this.projectId, text, clientMessageId, materialIds);
+      if (response.status === 'done') {
+        this.applyChatTurns([response.user_turn, response.assistant_turn]);
+        if (response.proposal) this.applyChatProposal(response.proposal);
+        this.applyTailState('answered');
+      } else {
+        this.applyTailState(response.status);
+      }
+    } catch (error) {
+      this.state.chat = {
+        ...this.state.chat,
+        sending: false,
+        tailState: 'answered',
+        pendingClientMessageId: null,
+        messages: this.state.chat.messages.filter((turn) => turn.client_message_id !== clientMessageId),
+      };
+      this.reportFailure('发送对话失败', error);
+      return;
+    }
+    this.emit();
+  }
+
+  async acceptProposal(proposalId: string) {
+    if (!this.projectId) return;
+    try {
+      const result = await acceptChatProposal(this.projectId, proposalId);
+      this.applyChatProposal(result.proposal);
+      this.emit();
+    } catch (error) {
+      this.reportFailure('采纳提案失败', error);
+    }
+  }
+
+  async rejectProposal(proposalId: string) {
+    if (!this.projectId) return;
+    try {
+      const result = await rejectChatProposal(this.projectId, proposalId);
+      this.applyChatProposal(result.proposal);
+      this.emit();
+    } catch (error) {
+      this.reportFailure('拒绝提案失败', error);
+    }
+  }
+
+  private async uploadChatAttachments(files: File[] | { name: string; type: string }[]): Promise<string[]> {
+    const uploaded: string[] = [];
+    for (const file of files) {
+      if (!this.isUploadableFile(file)) continue;
+      const material = await uploadMaterial({
+        category: 'record',
+        name: file.name,
+        description: `Copilot 对话附件：${file.name}`,
+        keywords: [file.name],
+        qualification: null,
+        library_id: 'default',
+      }, file);
+      uploaded.push(material.id);
+      this.scenario.materials = [
+        ...this.scenario.materials.filter((item) => item.id !== material.id),
+        { id: material.id, category: material.category, 名称: material.name, 命中: true },
+      ];
+      this.state.matchedMaterials = [...new Set([...this.state.matchedMaterials, material.id])];
+    }
+    return uploaded;
+  }
+
+  private isUploadableFile(file: File | { name: string; type: string }): file is File {
+    return typeof File !== 'undefined' && file instanceof File;
   }
 }
