@@ -15,11 +15,11 @@ function statusOf(state: ProgressState, node: string) {
 }
 
 describe('reduceProgress', () => {
-  test('初始态：七个节点全 pending，retrieve 不展示（当前流水线不跑它）', () => {
+  test('初始态：八个节点全 pending，含 retrieve（API 路径确实会跑，P1.6 实测）', () => {
     const state = initialProgress();
     expect(state.phase).toBe('idle');
-    expect(state.nodes).toHaveLength(7);
-    expect(state.nodes.map((n) => n.node)).not.toContain('retrieve');
+    expect(state.nodes).toHaveLength(8);
+    expect(state.nodes.map((n) => n.node)).toContain('retrieve');
   });
 
   test('node_started / node_completed 推进状态', () => {
@@ -71,10 +71,53 @@ describe('reduceProgress', () => {
     expect(state.phase).not.toBe('done');
   });
 
-  test('run_failed 记错误类型与消息', () => {
-    const state = apply([['run_failed', { node: 'analyze', error_type: 'ValueError', message: '缺少 API key' }]]);
+  test('escalate_request 挂起——它不是确认点，但同样阻塞流水线（P1.6 实测撞上）', () => {
+    const state = apply([
+      ['node_completed', { node: 'retrieve' }],
+      ['escalate_request', {
+        escalation_id: 'assets-placeholder',
+        node: 'retrieve',
+        title: '企业资料库匹配不完整',
+        body: '已命中 12 项企业资料，仍有 2 个章节需要补充材料。',
+        options: [{ label: '使用已匹配素材继续' }, { label: '记录待补充素材，先继续' }],
+      }],
+    ]);
+    expect(state.phase).toBe('awaiting_escalation');
+    expect(state.escalation).toEqual({
+      id: 'assets-placeholder',
+      title: '企业资料库匹配不完整',
+      body: '已命中 12 项企业资料，仍有 2 个章节需要补充材料。',
+      options: ['使用已匹配素材继续', '记录待补充素材，先继续'],
+    });
+  });
+
+  test('escalate_response 之后恢复 running 并清掉挂起', () => {
+    const state = apply([
+      ['escalate_request', { escalation_id: 'e1', title: 't', body: 'b', options: [] }],
+      ['escalate_response', { escalation_id: 'e1' }],
+    ]);
+    expect(state.phase).toBe('running');
+    expect(state.escalation).toBeNull();
+  });
+
+  test('下一个节点开跑也会清掉 escalation，防止横幅长驻', () => {
+    const state = apply([
+      ['escalate_request', { escalation_id: 'e1', title: 't', body: 'b', options: [] }],
+      ['node_started', { node: 'generate' }],
+    ]);
+    expect(state.escalation).toBeNull();
+    expect(state.phase).toBe('running');
+  });
+
+  test('run_failed 记错误类型与消息，并把出错节点标成 failed', () => {
+    const state = apply([
+      ['node_started', { node: 'analyze' }],
+      ['run_failed', { node: 'analyze', error_type: 'ValueError', message: '缺少 API key' }],
+    ]);
     expect(state.phase).toBe('failed');
     expect(state.error).toBe('ValueError：缺少 API key');
+    // 不标的话出错节点会一直显示成「进行中」，和红色错误自相矛盾
+    expect(statusOf(state, 'analyze')).toBe('failed');
   });
 
   test('lastEventId 单调递增，乱序事件不会把它拉回去', () => {
@@ -116,6 +159,7 @@ describe('subscribeProgress', () => {
 
     expect(urls[0]).toBe('/api/projects/p1/events?last_event_id=42');
     expect(Object.keys(handlers)).toContain('confirm_request');
+    expect(Object.keys(handlers)).toContain('escalate_request');
 
     handlers.node_started({ data: JSON.stringify({ node: 'analyze' }), lastEventId: '43' } as MessageEvent<string>);
     expect(states.at(-1)?.nodes.find((n) => n.node === 'analyze')?.status).toBe('running');

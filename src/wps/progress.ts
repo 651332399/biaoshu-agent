@@ -5,7 +5,7 @@
 // 推进流水线的按钮，只能把用户送去浏览器。
 //
 // 没有复用 `src/engine/sources.ts` 的 LiveSource：那是整个演示引擎的状态机
-// （场景、正文块、素材、对话），薄窗格只要七个节点的进度条。它已有的
+// （场景、正文块、素材、对话），薄窗格只要八个节点的进度条。它已有的
 // eventSourceFactory 与 ?last_event_id= 续传做法在这里照抄。
 
 import { apiUrl } from '../lib/apiBase';
@@ -14,15 +14,28 @@ export type ProgressPhase =
   | 'idle'
   | 'running'
   | 'awaiting_confirm'
+  | 'awaiting_escalation'
   | 'server_precheck_done'
   | 'failed';
 
-export type NodeStatus = 'pending' | 'running' | 'done';
+export type NodeStatus = 'pending' | 'running' | 'done' | 'failed';
 
 export interface NodeProgress {
   node: string;
   label: string;
   status: NodeStatus;
+}
+
+/**
+ * 升级请求。**不是确认点 ①②③④**，但同样阻塞流水线——2026-08-21 P1.6 端到端
+ * 实测撞上：retrieve 完成后发 `escalate_request`（企业资料库匹配不完整），
+ * generate 不会开始。窗格不显示它，用户看到的就是进度条卡在原地。
+ */
+export interface EscalationPrompt {
+  id: string;
+  title: string;
+  body: string;
+  options: string[];
 }
 
 export interface ProgressState {
@@ -32,12 +45,12 @@ export interface ProgressState {
   message: string;
   /** 挂起的确认点编号，1..4；null = 没有挂起。 */
   checkpoint: number | null;
+  /** 挂起的升级请求；null = 没有挂起。 */
+  escalation: EscalationPrompt | null;
   error: string | null;
   lastEventId: number;
 }
 
-// `retrieve` 在 NODE_ORDER 里但当前流水线不跑它（CLAUDE.md 已记），
-// 列出来会一直是灰的、看着像卡住。事件里真出现了会被动态补进来。
 const NODE_LABELS: Record<string, string> = {
   ingest: '读取文件',
   analyze: '解析要求',
@@ -49,11 +62,15 @@ const NODE_LABELS: Record<string, string> = {
   export: '导出分册',
 };
 
+// 八个节点全展示。CLAUDE.md 说 `retrieve` 在 CLI 路径未实现，但 **API 路径确实会跑**
+// （2026-08-21 P1.6 端到端实测，confirm② 之后 completed_nodes 里出现了 retrieve）——
+// 按 CLI 的口径藏起来会漏掉一个真实阶段。事件里出现未知节点也会被动态补进来。
 const DISPLAY_NODES = [
   'ingest',
   'analyze',
   'export_plan',
   'outline',
+  'retrieve',
   'generate',
   'compliance',
   'export',
@@ -69,6 +86,7 @@ export function initialProgress(): ProgressState {
     })),
     message: '',
     checkpoint: null,
+    escalation: null,
     error: null,
     lastEventId: 0,
   };
@@ -103,13 +121,14 @@ export function reduceProgress(
 
   switch (name) {
     case 'run_started':
-      return { ...next, phase: 'running', error: null, checkpoint: null };
+      return { ...next, phase: 'running', error: null, checkpoint: null, escalation: null };
     case 'node_started':
       return {
         ...next,
         phase: 'running',
         error: null,
         checkpoint: null,
+        escalation: null,
         nodes: withNode(next, node, 'running'),
         message: '',
       };
@@ -122,18 +141,40 @@ export function reduceProgress(
         ...next,
         phase: 'awaiting_confirm',
         checkpoint: typeof data.checkpoint === 'number' ? data.checkpoint : null,
+        escalation: null,
         message: '',
       };
+    case 'escalate_request':
+      return {
+        ...next,
+        phase: 'awaiting_escalation',
+        message: '',
+        escalation: {
+          id: String(data.escalation_id ?? ''),
+          title: String(data.title ?? '需要人工决定'),
+          body: String(data.body ?? ''),
+          options: Array.isArray(data.options)
+            ? data.options.map((o) =>
+                String((o as { label?: unknown })?.label ?? o),
+              )
+            : [],
+        },
+      };
+    case 'escalate_response':
+      return { ...next, phase: 'running', escalation: null };
     case 'run_failed':
+      // 失败节点要标出来。只置 phase 不动节点，出错的那个会一直显示成「进行中」，
+      // 和红色错误文案自相矛盾（2026-08-21 P1.6 实测看到）。
       return {
         ...next,
         phase: 'failed',
+        nodes: node ? withNode(next, node, 'failed') : next.nodes,
         error: `${String(data.error_type ?? '错误')}：${String(data.message ?? '')}`,
       };
     case 'run_completed':
       // **不能显示成「完成」**。事件自带 final_delivery_approved:false——服务器预检
       // 结束只代表可以进 WPS 验收，最终交付要等更新域、回传证据、服务器判定。
-      return { ...next, phase: 'server_precheck_done', checkpoint: null };
+      return { ...next, phase: 'server_precheck_done', checkpoint: null, escalation: null };
     default:
       return next;
   }
@@ -145,6 +186,8 @@ export const PROGRESS_EVENT_NAMES = [
   'node_progress',
   'node_completed',
   'confirm_request',
+  'escalate_request',
+  'escalate_response',
   'run_failed',
   'run_completed',
 ];

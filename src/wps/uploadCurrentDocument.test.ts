@@ -24,6 +24,7 @@ function makeDeps(
     runtime,
     upload: vi.fn(async () => ({ project_id: 'p-new' })),
     run: vi.fn(async () => ({})),
+    projectExists: vi.fn(async () => true),
     digest: vi.fn(async () => digest),
     readMemo: () => memo,
     writeMemo: (m: UploadMemo) => void written.push(m),
@@ -123,6 +124,17 @@ describe('uploadCurrentDocument', () => {
 
     expect(deps.digest).toHaveBeenCalledTimes(1);
     expect(result.reused).toBe(true); // 靠 sha256 命中，不是靠指纹
+  });
+
+  test('memo 指向的项目已被服务器清掉时，忽略 memo 重新上传', async () => {
+    const deps = makeDeps({}, MEMO);
+    deps.projectExists = vi.fn(async () => false);
+
+    const result = await uploadCurrentDocument(deps);
+    expect(result.reused).toBe(false);
+    expect(result.projectId).toBe('p-new');
+    expect(deps.upload).toHaveBeenCalledTimes(1);
+    expect(deps.projectExists).toHaveBeenCalledWith('p-old');
   });
 
   test('读文档失败直接抛出，不建空项目', async () => {

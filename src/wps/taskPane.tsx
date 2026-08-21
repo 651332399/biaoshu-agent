@@ -9,7 +9,7 @@ import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getRuntime } from '../platform/capabilities';
 import type { ClientCapabilities } from '../platform/RuntimeAdapter';
-import { runProject, uploadProject } from '../lib/api';
+import { getProjectState, runProject, uploadProject } from '../lib/api';
 import { setApiBase } from '../lib/apiBase';
 import {
   readUploadMemo,
@@ -46,9 +46,50 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Banner({
+  title,
+  body,
+  onGo,
+}: {
+  title: string;
+  body: string;
+  onGo: () => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: 10,
+        background: '#fff7e6',
+        border: '1px solid #ffd591',
+        borderRadius: 4,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>{title}</div>
+      <div style={{ color: '#666', margin: '4px 0 8px' }}>{body}</div>
+      <button
+        type="button"
+        onClick={onGo}
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          fontSize: 12,
+          cursor: 'pointer',
+          background: '#fa8c16',
+          color: '#fff',
+          border: 0,
+          borderRadius: 4,
+        }}
+      >
+        去浏览器处理
+      </button>
+    </div>
+  );
+}
+
 function NodeList({ progress }: { progress: ProgressState }) {
-  const marks = { done: '✓', running: '▶', pending: '·' } as const;
-  const colors = { done: '#0a0', running: '#1a56db', pending: '#bbb' } as const;
+  const marks = { done: '✓', running: '▶', pending: '·', failed: '✗' } as const;
+  const colors = { done: '#0a0', running: '#1a56db', pending: '#bbb', failed: '#b00' } as const;
   return (
     <div style={{ fontSize: 12, lineHeight: 1.9 }}>
       {progress.nodes.map((node) => (
@@ -93,6 +134,14 @@ function TaskPane() {
         run: (projectId) => runProject(projectId, 'llm'),
         onRunFailed: (e: unknown) =>
           setError(`流水线启动失败：${e instanceof Error ? e.message : String(e)}`),
+        projectExists: async (projectId) => {
+          try {
+            await getProjectState(projectId);
+            return true;
+          } catch {
+            return false;
+          }
+        },
         digest: sha256Hex,
         readMemo: readUploadMemo,
         writeMemo: writeUploadMemo,
@@ -164,39 +213,26 @@ function TaskPane() {
           )}
 
           {progress.phase === 'awaiting_confirm' && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: 10,
-                background: '#fff7e6',
-                border: '1px solid #ffd591',
-                borderRadius: 4,
-              }}
-            >
-              <div style={{ fontWeight: 600 }}>
-                确认点 {progress.checkpoint ?? '?'} 待处理
-                {progress.checkpoint ? ` · ${CHECKPOINT_LABELS[progress.checkpoint] ?? ''}` : ''}
-              </div>
-              <div style={{ color: '#666', margin: '4px 0 8px' }}>
-                确认在浏览器里完成，本窗格不提供推进按钮。
-              </div>
-              <button
-                type="button"
-                onClick={() => void onOpenBrowser()}
-                style={{
-                  width: '100%',
-                  padding: '6px 10px',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  background: '#fa8c16',
-                  color: '#fff',
-                  border: 0,
-                  borderRadius: 4,
-                }}
-              >
-                去浏览器确认
-              </button>
-            </div>
+            <Banner
+              title={`确认点 ${progress.checkpoint ?? '?'} 待处理${
+                progress.checkpoint ? ` · ${CHECKPOINT_LABELS[progress.checkpoint] ?? ''}` : ''
+              }`}
+              body="确认在浏览器里完成，本窗格不提供推进按钮。"
+              onGo={() => void onOpenBrowser()}
+            />
+          )}
+
+          {/* 升级请求不是确认点，但同样阻塞流水线。不显示它，用户看到的就是进度条卡住。 */}
+          {progress.phase === 'awaiting_escalation' && progress.escalation && (
+            <Banner
+              title={`需要人工决定 · ${progress.escalation.title}`}
+              body={`${progress.escalation.body}${
+                progress.escalation.options.length
+                  ? `（可选：${progress.escalation.options.join(' / ')}）`
+                  : ''
+              }`}
+              onGo={() => void onOpenBrowser()}
+            />
           )}
 
           {progress.phase === 'server_precheck_done' && (

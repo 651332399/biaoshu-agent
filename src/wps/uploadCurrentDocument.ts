@@ -25,6 +25,12 @@ export interface UploadDeps {
    */
   run: (projectId: string) => Promise<unknown>;
   onRunFailed?: (error: unknown) => void;
+  /**
+   * memo 里的项目在服务器上是否还在。项目会被 cleanup 清掉、或因超出
+   * `max_projects` 被归档，memo 却还指着它——不校验就会复用一个死 id，
+   * 之后订阅事件流 404、窗格一直停在空进度。
+   */
+  projectExists: (projectId: string) => Promise<boolean>;
   digest: (bytes: ArrayBuffer) => Promise<string>;
   readMemo: () => UploadMemo | null;
   writeMemo: (memo: UploadMemo) => void;
@@ -72,7 +78,9 @@ function sameFingerprint(a: DocumentFingerprint | null, b: DocumentFingerprint |
 
 export async function uploadCurrentDocument(deps: UploadDeps): Promise<UploadOutcome> {
   const doc = await deps.runtime.readActiveDocumentBytes();
-  const memo = deps.readMemo();
+  const stored = deps.readMemo();
+  // 服务器上没有了就当没记过，走全新上传
+  const memo = stored && (await deps.projectExists(stored.projectId)) ? stored : null;
 
   // 廉价路径：stat 指纹一致就直接复用，连 sha256 都不用算。
   // 13.3MB 的册子算一次哈希不贵（实测读取 15ms），但重复点击是高频操作，能省则省。
