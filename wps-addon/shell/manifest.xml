@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<JsPlugin>
+  <ApiVersion>1.0.0</ApiVersion>
+  <Name>标书助手</Name>
+  <Description>在 WPS 中一键把当前打开的招标文件送进标书流水线</Description>
+</JsPlugin>

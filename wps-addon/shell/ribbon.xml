@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnAddinLoad">
+  <ribbon>
+    <tabs>
+      <tab id="biaoshuTab" label="标书助手">
+        <group id="biaoshuGroup" label="标书助手">
+          <button id="btnTaskPane" label="打开助手" onAction="OnAction" getEnabled="OnGetEnabled" size="large"/>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
