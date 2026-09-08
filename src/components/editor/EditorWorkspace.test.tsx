@@ -3,6 +3,7 @@ import { afterEach, describe, test, expect } from 'vitest';
 import { EditorWorkspace } from './EditorWorkspace';
 import { kqyy } from '../../scenarios/kqyy';
 import type { EngineState } from '../../engine/ScenarioEngine';
+import { createEmptyChatState } from '../../engine/types';
 
 afterEach(cleanup);
 
@@ -38,6 +39,7 @@ describe('EditorWorkspace', () => {
     serverPackageUrl: null,
     error: null,
     mode: 'demo',
+    chat: createEmptyChatState(),
   };
 
   test('renders document header with project name, phase label and paused save state', () => {
@@ -80,7 +82,8 @@ describe('EditorWorkspace', () => {
       />
     );
     expect(screen.getAllByText(/导出打包/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/智能标书最终终审与打包导出/)).toBeInTheDocument();
+    expect(screen.getByText('WPS 最终验收')).toBeInTheDocument();
+    expect(screen.getByText('服务器流水线结束不代表最终交付通过。')).toBeInTheDocument();
   });
 
   test('derives the self-check phase and stage once redlines are revealed', () => {

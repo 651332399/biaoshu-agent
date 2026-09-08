@@ -87,16 +87,13 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
     );
   }
 
-  // 导出打包阶段:中央 = 最终终审与打包导出页面(P6,流水线最后一阶段,无需返回)
+  // 服务器流水线结束后进入独立的 WPS 验收阶段。
   if (phase === 'export') {
     return (
       <ExportDialog
         scenario={scenario}
         backendExportPlan={state.backendExportPlan}
         backendOutline={state.backendOutline}
-        serverDocxUrl={state.serverPackageUrl || state.serverDocxUrl}
-        dirtyBlockIds={[...documentStore.dirtyBlocks]}
-        onConfirm={() => engine.confirmCheckpoint()}
       />
     );
   }

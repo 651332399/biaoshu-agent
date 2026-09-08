@@ -5,6 +5,7 @@ import { StructurePanel } from './StructurePanel';
 import { kqyy } from '../../scenarios/kqyy';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { BackendRequirement } from '../../engine/types';
+import { createEmptyChatState } from '../../engine/types';
 
 afterEach(cleanup);
 
@@ -37,6 +38,7 @@ describe('StructurePanel', () => {
     serverPackageUrl: null,
     error: null,
     mode: 'demo',
+    chat: createEmptyChatState(),
   };
 
   test('requirements phase: groups requirements by category and flags mandatory items', () => {

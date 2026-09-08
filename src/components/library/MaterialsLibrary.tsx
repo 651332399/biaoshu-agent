@@ -231,7 +231,6 @@ function UploadForm({
       const file = fileRef.current?.files?.[0] ?? null;
       await uploadMaterial(
         {
-          id: `mat-${category}-${name.trim()}`,
           category,
           name: name.trim(),
           keywords: keywords.split(/[,，\s]+/).filter(Boolean),

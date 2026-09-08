@@ -1,5 +1,106 @@
 export type BackendRequirementType = '资质' | '评分' | '废标' | '格式' | '技术参数' | '商务条款';
 
+export type JsonPointer = string;
+export type EntityRef = string;
+
+export interface JsonPatchOp {
+  op: 'add' | 'remove' | 'replace';
+  path: JsonPointer;
+  value?: unknown;
+}
+
+export interface OpTarget {
+  op_index: number;
+  kind: 'existing' | 'new' | 'scalar';
+  entity_id: EntityRef | null;
+  parent_pointer: JsonPointer;
+  anchor_prev_id?: EntityRef | null;
+  anchor_next_id?: EntityRef | null;
+  collection_digest?: string | null;
+}
+
+export interface FieldDiff {
+  op: 'add' | 'remove' | 'replace';
+  path: JsonPointer;
+  label: string;
+  before: unknown | null;
+  after: unknown | null;
+}
+
+export interface EscalationDecisionProposal {
+  escalation_id: string;
+  option_index: number;
+  rationale: string;
+}
+
+export type ChatIntent =
+  | 'answer'
+  | 'clarify'
+  | 'proposal'
+  | 'material'
+  | 'escalation_decision'
+  | 'error';
+
+export interface ChatTurn {
+  turn_id: string;
+  client_message_id: string | null;
+  request_digest?: string;
+  role: 'user' | 'assistant';
+  text: string;
+  intent?: ChatIntent | null;
+  pipeline_state: string;
+  context_fingerprint: string;
+  context_turn_ids: string[];
+  context_stale: boolean;
+  citations: string[];
+  proposal_id?: string | null;
+  escalation_proposal?: EscalationDecisionProposal | null;
+  material_ids: string[];
+  created_by: string;
+  model_id?: string | null;
+  llm_response_digest?: string | null;
+  ts: string;
+}
+
+export interface ChatProposal {
+  proposal_id: string;
+  turn_id: string;
+  target_artifact: 'requirements' | 'outline' | 'tender_spec';
+  checkpoint: 1 | 2 | 4;
+  base_fingerprint: string;
+  result_fingerprint: string;
+  patch: JsonPatchOp[];
+  op_targets: OpTarget[];
+  diff: FieldDiff[];
+  summary: string;
+  status: 'proposed' | 'accepted' | 'rejected' | 'stale';
+  created_by: string;
+  created_at: string;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+}
+
+export type ProposalCard = ChatProposal;
+export type ChatTailState = 'answered' | 'processing' | 'interrupted';
+
+export interface ChatState {
+  messages: ChatTurn[];
+  proposals: ProposalCard[];
+  sending: boolean;
+  tailState: ChatTailState;
+  pendingClientMessageId: string | null;
+}
+
+export function createEmptyChatState(): ChatState {
+  return {
+    messages: [],
+    proposals: [],
+    sending: false,
+    tailState: 'answered',
+    pendingClientMessageId: null,
+  };
+}
+
 export interface BackendRequirement {
   id: string;
   type: BackendRequirementType;
@@ -93,6 +194,8 @@ export interface BackendAssetMatch {
   asset_id: string;
   requirement_id?: string | null;
   section_title?: string | null;
+  category?: BackendMaterialCategory;
+  material_name?: string;
   score: number;
   content: string;
 }
@@ -218,6 +321,99 @@ export type BiaoshuEventName =
 export interface BiaoshuEvent {
   id: number;
   event: BiaoshuEventName;
+  data: Record<string, unknown>;
+}
+
+export type GenerationStatus =
+  | 'generation_started'
+  | 'generated'
+  | 'server_precheck_failed'
+  | 'server_precheck_passed'
+  | 'awaiting_wps_acceptance'
+  | 'wps_verification_failed'
+  | 'archiving'
+  | 'accepted'
+  | 'superseded';
+
+export type WpsEvidenceType =
+  | 'final_docx'
+  | 'final_pdf'
+  | 'cover'
+  | 'font_status'
+  | 'typography_color'
+  | 'toc_pageref'
+  | 'representative_table'
+  | 'landscape_section';
+
+export interface WpsValidationIssue {
+  code: string;
+  message: string;
+  artifact_id?: string | null;
+  evidence_type?: string | null;
+}
+
+export interface GenerationAcceptance {
+  project_id: string;
+  generation_id: string;
+  artifact_set_digest: string | null;
+  status: GenerationStatus;
+  server_precheck_passed: boolean;
+  final_delivery_approved: boolean;
+  artifacts: {
+    artifact_id: string;
+    file_name: string;
+    required_evidence_types: WpsEvidenceType[];
+  }[];
+  required_evidence_slots: string[];
+  missing_evidence_slots: string[];
+  validation_issues: WpsValidationIssue[];
+  archiving_issues: WpsValidationIssue[];
+  archive_retryable: boolean;
+  archive_location: {
+    backend: string;
+    objects: Record<string, {
+      key: string;
+      version_id: string;
+      etag: string;
+      size: number;
+      sha256: string;
+      retention: string;
+      object_lock_mode: string;
+    }>;
+  } | null;
+}
+
+export interface WpsAcceptanceChecks {
+  local_fonts_confirmed: boolean;
+  all_fields_updated: boolean;
+  toc_pageref_checked: boolean;
+  pagination_checked: boolean;
+  tables_checked: boolean;
+  fonts_checked: boolean;
+  colors_checked: boolean;
+  saved_reopened_checked: boolean;
+  final_pdf_exported: boolean;
+  evidence_slots_complete: boolean;
+}
+
+export type AcceptanceEventName =
+  | 'generation_started'
+  | 'awaiting_wps_acceptance'
+  | 'evidence_received'
+  | 'verification_failed'
+  | 'verification_passed'
+  | 'archiving'
+  | 'accepted'
+  | 'delivery_accepted'
+  | 'interrupted_retryable'
+  | 'interruption_resolved'
+  | 'server_render_started'
+  | 'server_precheck_failed'
+  | 'superseded';
+
+export interface AcceptanceEventData {
+  id: number;
+  event: AcceptanceEventName;
   data: Record<string, unknown>;
 }
 

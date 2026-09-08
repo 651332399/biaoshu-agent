@@ -4,8 +4,13 @@ import { CopilotPanel } from './CopilotPanel';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { Scenario } from '../../engine/demo/types';
+import { createEmptyChatState } from '../../engine/types';
+import { setApiBase } from '../../lib/apiBase';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setApiBase('');
+});
 
 function makeState(overrides: Partial<EngineState> = {}): EngineState {
   return {
@@ -32,6 +37,7 @@ function makeState(overrides: Partial<EngineState> = {}): EngineState {
     serverPackageUrl: null,
     error: null,
     mode: 'demo',
+    chat: createEmptyChatState(),
     ...overrides,
   };
 }
@@ -83,6 +89,34 @@ function makeEngine(overrides: Partial<WorkspaceEngine> = {}): WorkspaceEngine {
 }
 
 describe('CopilotPanel', () => {
+  test('子路径部署为服务端返回的下载路径添加前缀', () => {
+    setApiBase('/biaoshu/');
+    const state = makeState({ activeStage: 9, serverPackageUrl: '/api/projects/p1/artifacts/bid.zip' });
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={makeEngine()} phase="export" onOpenLibrary={vi.fn()} />);
+    expect(screen.getByRole('link', { name: /下载/ })).toHaveAttribute('href', '/biaoshu/api/projects/p1/artifacts/bid.zip');
+  });
+
+  test('shows live progress while compliance is still running', () => {
+    const state = makeState({
+      activeStage: 8,
+      status: 'playing',
+      logs: [{ id: 'progress-compliance', text: '合规校验 16/34 批，预计还需 511 秒', stage: 8 }],
+    });
+
+    render(
+      <CopilotPanel
+        state={state}
+        scenario={makeScenario()}
+        engine={makeEngine()}
+        phase="selfcheck"
+        onOpenLibrary={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('合规校验 16/34 批，预计还需 511 秒')).toBeInTheDocument();
+    expect(screen.getByText('合规校验进行中')).toBeInTheDocument();
+  });
+
   test('requirements phase renders StrategySection with quality metrics', () => {
     const state = makeState({
       activeStage: 1,
@@ -274,12 +308,13 @@ describe('CopilotPanel', () => {
         export_plan: { ...exportPlan, naming_pattern: 'edited-{cover_title}.docx' },
       }) },
     });
+    fireEvent.click(screen.getByRole('checkbox', { name: /保存为结构模板/ }));
     fireEvent.click(screen.getByRole('button', { name: '确认继续' }));
 
     expect(engine.confirmCheckpoint).toHaveBeenCalledWith({
       ...tenderSpec,
       export_plan: { ...exportPlan, naming_pattern: 'edited-{cover_title}.docx' },
-    }, []);
+    }, [], true);
   });
 
   test('checkpoint 4 blocks confirmation when a copy-verbatim form is unresolved', () => {
@@ -384,7 +419,7 @@ describe('CopilotPanel', () => {
     fireEvent.change(input, { target: { value: '补充一份业绩合同' } });
     fireEvent.click(screen.getByRole('button', { name: '➤' }));
 
-    expect(engine.addCustomUserMessage).toHaveBeenCalledWith('补充一份业绩合同');
+    expect(engine.addCustomUserMessage).toHaveBeenCalledWith('补充一份业绩合同', []);
     expect(input.value).toBe('');
   });
 
@@ -394,5 +429,85 @@ describe('CopilotPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '➤' }));
     expect(engine.addCustomUserMessage).not.toHaveBeenCalled();
+  });
+
+  test('renders chat messages, stale badge, citations, tail warning and proposal actions', () => {
+    const engine = makeEngine({ acceptProposal: vi.fn(), rejectProposal: vi.fn() });
+    const state = makeState({
+      chat: {
+        ...createEmptyChatState(),
+        tailState: 'interrupted',
+        messages: [
+          {
+            turn_id: 't-0001',
+            client_message_id: 'c1',
+            role: 'user',
+            text: '请更新要求',
+            intent: null,
+            pipeline_state: 'checkpoint:1',
+            context_fingerprint: 'ctx',
+            context_turn_ids: [],
+            context_stale: false,
+            citations: [],
+            proposal_id: null,
+            escalation_proposal: null,
+            material_ids: ['mat-1'],
+            created_by: 'tester',
+            model_id: null,
+            llm_response_digest: null,
+            ts: '2026-07-21T00:00:00Z',
+          },
+          {
+            turn_id: 't-0002',
+            client_message_id: null,
+            role: 'assistant',
+            text: '已形成提案。',
+            intent: 'proposal',
+            pipeline_state: 'checkpoint:1',
+            context_fingerprint: 'ctx',
+            context_turn_ids: ['t-0001'],
+            context_stale: true,
+            citations: ['req-0001'],
+            proposal_id: 'p-0001',
+            escalation_proposal: null,
+            material_ids: [],
+            created_by: 'assistant',
+            model_id: 'deepseek-v4-flash',
+            llm_response_digest: null,
+            ts: '2026-07-21T00:00:01Z',
+          },
+        ],
+        proposals: [{
+          proposal_id: 'p-0001',
+          turn_id: 't-0002',
+          target_artifact: 'requirements',
+          checkpoint: 1,
+          base_fingerprint: 'base',
+          result_fingerprint: 'result',
+          patch: [{ op: 'replace', path: '/0/text', value: '新要求' }],
+          op_targets: [{ op_index: 0, kind: 'existing', entity_id: 'req-0001', parent_pointer: '' }],
+          diff: [{ op: 'replace', path: '/0/text', label: 'req-0001 · 文本', before: '旧要求', after: '新要求' }],
+          summary: '建议更新要求文本。',
+          status: 'proposed',
+          created_by: 'assistant',
+          created_at: '2026-07-21T00:00:01Z',
+          resolved_by: null,
+          resolved_at: null,
+        }],
+      },
+    });
+
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={engine} phase="requirements" onOpenLibrary={vi.fn()} />);
+
+    expect(screen.getByText('请更新要求')).toBeInTheDocument();
+    expect(screen.getByText('已形成提案。')).toBeInTheDocument();
+    expect(screen.getByText('上下文已更新')).toBeInTheDocument();
+    expect(screen.getByText('req-0001')).toBeInTheDocument();
+    expect(screen.getByText(/上一条回复中断/)).toBeInTheDocument();
+    expect(screen.getByText(/建议更新要求文本/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '采纳' }));
+    fireEvent.click(screen.getByRole('button', { name: '拒绝' }));
+    expect(engine.acceptProposal).toHaveBeenCalledWith('p-0001');
+    expect(engine.rejectProposal).toHaveBeenCalledWith('p-0001');
   });
 });

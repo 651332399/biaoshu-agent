@@ -7,7 +7,11 @@ interface Props {
   card: Step;
   requirements?: BackendRequirement[];
   artifact?: { label: string; value: unknown };
-  onConfirm: (artifact?: unknown, confirmedFields?: ('项目编号' | '采购人')[]) => void;
+  onConfirm: (
+    artifact?: unknown,
+    confirmedFields?: ('项目编号' | '采购人')[],
+    saveAsTemplate?: boolean,
+  ) => void;
   onChoose: (index: number) => void;
 }
 
@@ -39,6 +43,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const [manualMeta, setManualMeta] = useState<Partial<Record<'项目编号' | '采购人', string>>>({});
   const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目编号' | '采购人', boolean>>>({});
   const [candidateDecisions, setCandidateDecisions] = useState<Record<string, 'required' | 'excluded'>>({});
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const grouped = useMemo(() => {
     const order = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'];
     return order
@@ -160,10 +165,12 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
         }
         projectMeta[field] = value;
       }
-      onConfirm(
-        { ...editedTenderSpec, project_meta: projectMeta },
-        unverifiedMetaFields,
-      );
+      const confirmedArtifact = { ...editedTenderSpec, project_meta: projectMeta };
+      if (saveAsTemplate) {
+        onConfirm(confirmedArtifact, unverifiedMetaFields, true);
+      } else {
+        onConfirm(confirmedArtifact, unverifiedMetaFields);
+      }
       return;
     }
     if (artifact) {
@@ -428,6 +435,15 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
                   ))}
                 </div>
               )}
+              <label className="flex items-start gap-2 rounded-md border border-blue-100 bg-blue-50 p-2 text-[11px] text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={saveAsTemplate}
+                  onChange={(event) => setSaveAsTemplate(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>保存为结构模板（仅保存分册、样式和表单结构，不保存项目名称、编号或采购人）</span>
+              </label>
             </div>
           )}
 

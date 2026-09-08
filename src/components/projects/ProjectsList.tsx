@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listProjects, type ProjectSummary } from '../../lib/api';
 
-export type ProjectStatus = 'active' | 'exported' | 'draft';
+export type ProjectStatus = ProjectSummary['status'];
 
 export interface RecentProject {
   id: string;
@@ -12,8 +12,16 @@ export interface RecentProject {
 
 const STATUS_META: Record<ProjectStatus, { label: string; cls: string }> = {
   active: { label: '进行中', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-  exported: { label: '已导出', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   draft: { label: '草稿', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+  generation_started: { label: '生成中', cls: 'bg-blue-50 text-blue-600' },
+  generated: { label: '已生成', cls: 'bg-blue-50 text-blue-600' },
+  server_precheck_failed: { label: '预检失败', cls: 'bg-red-50 text-red-700 border-red-200' },
+  server_precheck_passed: { label: '预检通过', cls: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  awaiting_wps_acceptance: { label: '待 WPS 验收', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  wps_verification_failed: { label: 'WPS 验收失败', cls: 'bg-red-50 text-red-600' },
+  archiving: { label: '归档中', cls: 'bg-violet-50 text-violet-700 border-violet-200' },
+  accepted: { label: '已验收', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  superseded: { label: '已失效', cls: 'bg-gray-100 text-gray-600' },
 };
 
 export function RecentProjectRow({ project, onOpen }: { project: RecentProject; onOpen?: (id: string) => void }) {
@@ -36,9 +44,11 @@ export function RecentProjectRow({ project, onOpen }: { project: RecentProject; 
 }
 
 function toRecentProject(project: ProjectSummary): RecentProject {
-  const detail = project.status === 'exported'
-    ? '已生成交付文件'
-    : project.current_node ? `当前节点：${project.current_node}` : '等待开始';
+  const detail = project.status === 'accepted'
+    ? '最终交付已通过'
+    : project.status === 'awaiting_wps_acceptance'
+      ? '服务器预检已通过，等待 WPS 验收'
+      : project.current_node ? `当前节点：${project.current_node}` : STATUS_META[project.status].label;
   return {
     id: project.id,
     name: project.name,

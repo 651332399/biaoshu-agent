@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { Scenario } from '../../engine/demo/types';
+import type { ChatProposal, ChatTurn, FieldDiff } from '../../engine/types';
 import { exportArtifactLabel, getDisplayVolumes } from '../../lib/exportPlanView';
+import { apiUrl } from '../../lib/apiBase';
 import { DecisionCard } from '../DecisionCard';
 import type { EditorPhase } from './phase';
 import { PHASE_LABEL } from './phase';
@@ -17,6 +19,8 @@ interface Props {
 
 export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: Props) {
   const [input, setInput] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const card = state.pendingCard;
   const isCheckpoint = card?.kind === 'checkpoint' || card?.kind === 'export';
   const isEscalate = card?.kind === 'escalate';
@@ -38,13 +42,14 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
 
   const send = () => {
     const t = input.trim();
-    if (!t) return;
-    engine.addCustomUserMessage(t);
+    if (!t && files.length === 0) return;
+    engine.addCustomUserMessage(t || `补充 ${files.length} 个材料附件`, files);
     setInput('');
+    setFiles([]);
   };
 
   return (
-    <aside className="w-80 xl:w-96 shrink-0 border-l border-[var(--border)] bg-[var(--surface)] h-full flex flex-col">
+    <aside className="h-full w-full shrink-0 border-l border-[var(--border)] bg-[var(--surface)] flex flex-col md:w-80 xl:w-96">
       {/* Header */}
       <div className="px-4 py-3 border-b border-[var(--border)] bg-gray-50 flex items-center justify-between shrink-0">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
@@ -62,7 +67,13 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
             card={card}
             requirements={card.id === 'confirm-1' ? state.backendRequirements : undefined}
             artifact={checkpointArtifact}
-            onConfirm={(artifact, confirmedFields) => engine.confirmCheckpoint(artifact, confirmedFields)}
+            onConfirm={(artifact, confirmedFields, saveAsTemplate) => {
+              if (saveAsTemplate) {
+                engine.confirmCheckpoint(artifact, confirmedFields, true);
+              } else {
+                engine.confirmCheckpoint(artifact, confirmedFields);
+              }
+            }}
             onChoose={(i) => engine.chooseOption(i)}
           />
         )}
@@ -71,6 +82,20 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
         <div className="rounded-lg bg-[var(--accent-soft)] border border-blue-100 px-3 py-2">
           <p className="text-[11px] font-bold text-[var(--accent)]">阶段 {state.activeStage || 0} · {PHASE_LABEL[phase]}</p>
         </div>
+
+        <ChatStream state={state} engine={engine} />
+
+        {state.status === 'playing' && (
+          <section className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-blue-700">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+              <span>{state.activeStage === 8 ? '合规校验进行中' : '后端任务进行中'}</span>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-blue-700">
+              {state.logs.at(-1)?.text || '正在等待最新进度…'}
+            </p>
+          </section>
+        )}
 
         {phase === 'requirements' && <StrategySection state={state} scenario={scenario} />}
         {phase === 'generate' && <GenerateSection state={state} scenario={scenario} onOpenLibrary={onOpenLibrary} />}
@@ -85,8 +110,45 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
 
       {/* 对话输入 */}
       <div className="shrink-0 border-t border-[var(--border)] p-3">
+        {files.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {files.map((file) => (
+              <span
+                key={`${file.name}-${file.size}`}
+                className="inline-flex max-w-full items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] text-gray-600"
+              >
+                <span className="truncate">{file.name}</span>
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-red-600"
+                  onClick={() => setFiles((items) => items.filter((item) => item !== file))}
+                  aria-label={`移除 ${file.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--accent)]">
-          <span className="text-gray-400">📎</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              setFiles(Array.from(event.target.files ?? []));
+              event.currentTarget.value = '';
+            }}
+          />
+          <button
+            type="button"
+            className="text-gray-400 hover:text-[var(--accent)]"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="添加材料附件"
+          >
+            📎
+          </button>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -95,12 +157,150 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
             className="flex-1 text-xs outline-none bg-transparent"
           />
           <button onClick={send} className="text-[var(--accent)] font-bold text-sm hover:opacity-80 cursor-pointer">
-            ➤
+            {state.chat.sending ? '…' : '➤'}
           </button>
         </div>
       </div>
     </aside>
   );
+}
+
+function ChatStream({ state, engine }: { state: EngineState; engine: WorkspaceEngine }) {
+  const messages = state.chat.messages;
+  const proposals = state.chat.proposals;
+  if (messages.length === 0 && proposals.length === 0 && state.chat.tailState === 'answered') return null;
+  return (
+    <section className="rounded-xl border border-gray-100 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold text-gray-700">对话</p>
+        {state.chat.sending && <span className="text-[10px] font-semibold text-blue-600">发送中</span>}
+      </div>
+      {state.chat.tailState === 'interrupted' && (
+        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] text-amber-700">
+          上一条回复中断，已停止等待；请换一条消息重新发送。
+        </div>
+      )}
+      <ol className="space-y-2">
+        {messages.map((message) => (
+          <ChatMessage key={message.turn_id} message={message} />
+        ))}
+      </ol>
+      {proposals.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {proposals.map((proposal) => (
+            <ProposalCardView
+              key={proposal.proposal_id}
+              proposal={proposal}
+              onAccept={() => engine.acceptProposal?.(proposal.proposal_id)}
+              onReject={() => engine.rejectProposal?.(proposal.proposal_id)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChatMessage({ message }: { message: ChatTurn }) {
+  const isUser = message.role === 'user';
+  return (
+    <li className={`rounded-lg border px-3 py-2 ${isUser ? 'border-gray-200 bg-gray-50' : 'border-blue-100 bg-blue-50/60'}`}>
+      <div className="mb-1 flex items-center gap-1.5">
+        <span className="text-[10px] font-bold text-gray-600">{isUser ? '我' : 'Copilot'}</span>
+        {message.intent && <span className="rounded bg-white/70 px-1.5 py-0.5 text-[9px] text-gray-500">{message.intent}</span>}
+        {message.context_stale && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">上下文已更新</span>}
+      </div>
+      <p className="whitespace-pre-line text-[11px] leading-relaxed text-gray-700">{message.text}</p>
+      {(message.citations.length > 0 || message.material_ids.length > 0) && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {message.citations.map((citation) => (
+            <span key={citation} className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-[9px] text-blue-700">
+              {citation}
+            </span>
+          ))}
+          {message.material_ids.map((id) => (
+            <span key={id} className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[9px] text-emerald-700">
+              材料 {id}
+            </span>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function ProposalCardView({
+  proposal,
+  onAccept,
+  onReject,
+}: {
+  proposal: ChatProposal;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const terminal = proposal.status !== 'proposed';
+  const statusLabel: Record<ChatProposal['status'], string> = {
+    proposed: '待处理',
+    accepted: '已采纳',
+    rejected: '已拒绝',
+    stale: '已过期',
+  };
+  return (
+    <article className={`rounded-lg border p-3 ${proposal.status === 'stale' ? 'border-gray-200 bg-gray-50 opacity-70' : 'border-amber-200 bg-amber-50'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold text-gray-800">
+          提案 {proposal.proposal_id} · {proposal.target_artifact}
+        </p>
+        <span className="rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-gray-600">{statusLabel[proposal.status]}</span>
+      </div>
+      <details className="mt-2" open={proposal.diff.length <= 2}>
+        <summary className="cursor-pointer text-[11px] leading-relaxed text-gray-700">{proposal.summary}</summary>
+        <div className="mt-2 space-y-1.5">
+          {proposal.diff.length === 0 ? (
+            <p className="text-[10px] text-gray-500">等待完整提案对账。</p>
+          ) : (
+            proposal.diff.map((item, index) => <DiffRow key={`${item.path}-${index}`} diff={item} />)
+          )}
+        </div>
+      </details>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={terminal}
+          onClick={onAccept}
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          采纳
+        </button>
+        <button
+          type="button"
+          disabled={terminal}
+          onClick={onReject}
+          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          拒绝
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function DiffRow({ diff }: { diff: FieldDiff }) {
+  return (
+    <div className="rounded-md border border-white/80 bg-white p-2">
+      <p className="text-[10px] font-semibold text-gray-700">{diff.op} · {diff.label || diff.path}</p>
+      <div className="mt-1 grid gap-1 text-[10px] text-gray-600">
+        <pre className="max-h-24 overflow-auto rounded bg-red-50 p-1 whitespace-pre-wrap">{formatDiffValue(diff.before)}</pre>
+        <pre className="max-h-24 overflow-auto rounded bg-emerald-50 p-1 whitespace-pre-wrap">{formatDiffValue(diff.after)}</pre>
+      </div>
+    </div>
+  );
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value === null || value === undefined) return '∅';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value, null, 2);
 }
 
 function StrategySection({ state, scenario }: { state: EngineState; scenario: Scenario }) {
@@ -274,7 +474,7 @@ function ExportSummarySection({ state }: { state: EngineState }) {
       )}
       {downloadUrl && (
         <a
-          href={downloadUrl}
+          href={apiUrl(downloadUrl)}
           download
           className="mt-3 block w-full text-center py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90"
         >

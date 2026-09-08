@@ -16,6 +16,7 @@ import {
   formCardNodeName,
   tiptapDocToBlocks,
 } from '../lib/blockDoc';
+import { buildBlockLockLabels } from '../lib/lockLabels';
 import { AnnotationBubble } from './editor/AnnotationBubble';
 
 interface PaperCanvasProps {
@@ -216,6 +217,7 @@ export function PaperCanvas({
       return { ...block, prose: streamText };
     });
   }, [blocks, isStreaming, streamText, writingBlockId]);
+  const lockLabels = useMemo(() => buildBlockLockLabels(displayBlocks), [displayBlocks]);
 
   // 荧光笔只跟随"正在写"的块;流式结束(status≠playing)后清掉高亮,避免末章正文
   // 一直泛黄的视觉残留。writingBlockId 本身仍保留给流式文本注入与"定位到正在写"滚动。
@@ -363,6 +365,8 @@ export function PaperCanvas({
                     type="button"
                     key={block.id}
                     onClick={() => onToggleLock(block.id)}
+                    aria-label={`${lockedBlocks.has(block.id) ? '解锁' : '锁定'} ${lockLabels.get(block.id)}`}
+                    title={lockedBlocks.has(block.id) ? '允许 Agent 后续更新该内容块' : '保留该内容块，不被 Agent 后续更新覆盖'}
                     className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
                       lockedBlocks.has(block.id)
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -370,7 +374,7 @@ export function PaperCanvas({
                     }`}
                   >
                     {lockedBlocks.has(block.id) ? <Lock size={12} /> : <Unlock size={12} />}
-                    {block.标题}
+                    {lockLabels.get(block.id)}
                   </button>
                 ))}
               </div>

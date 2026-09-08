@@ -34,8 +34,10 @@ export function EditorWorkspace({ state, scenario, engine, onOpenLibrary }: Prop
 
       {/* 三栏 */}
       <div className="flex flex-1 overflow-hidden">
-        <StructurePanel state={state} scenario={scenario} engine={engine} phase={phase} />
-        <DocumentCanvas state={state} scenario={scenario} engine={engine} phase={phase} onOpenLibrary={onOpenLibrary} />
+        <div className="hidden min-w-0 flex-1 overflow-hidden md:flex">
+          <StructurePanel state={state} scenario={scenario} engine={engine} phase={phase} />
+          <DocumentCanvas state={state} scenario={scenario} engine={engine} phase={phase} onOpenLibrary={onOpenLibrary} />
+        </div>
         <CopilotPanel state={state} scenario={scenario} engine={engine} phase={phase} onOpenLibrary={onOpenLibrary} />
       </div>
     </div>
