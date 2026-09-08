@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FileText } from 'lucide-react';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { DocBlockData, EvidenceChipData, Scenario } from '../../engine/demo/types';
@@ -130,8 +131,8 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
         {state.pricingRevealed && <PricingPanel pricing={scenario.pricing} />}
 
         {visibleBlocks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400 bg-[var(--paper)] border border-gray-100 rounded-2xl max-w-lg mx-auto px-6">
-            <span className="text-3xl mb-3">📄</span>
+          <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400 bg-[var(--paper)] border border-dashed border-[var(--zy-input)] rounded-2xl max-w-lg mx-auto px-6">
+            <FileText aria-hidden="true" size={32} strokeWidth={1.5} className="mb-3 text-[var(--zy-muted-2)]" />
             <p className="text-sm font-semibold text-gray-700 leading-snug">AI 正在自主编写标书正文…</p>
             <p className="text-xs text-[var(--muted)] mt-1.5 leading-relaxed">
               后端逐章生成的内容、偏离表与承诺件将在此纸张上实时组装,资料匹配以行内证据芯片嵌入。

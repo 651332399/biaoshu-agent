@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { CloudUpload, Database, FolderOpen, X } from 'lucide-react';
 import { RecentProjects } from './projects/ProjectsList';
 
 interface Props {
@@ -91,15 +92,15 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="bg-[var(--surface)] rounded-2xl shadow-lg border border-[var(--border)] p-8 max-w-xl w-full text-center"
+        className="bg-[var(--surface)] rounded-2xl border border-[var(--zy-line)] p-8 max-w-xl w-full text-center"
       >
         <div className="flex justify-center mb-4">
-          <div className="w-14 h-14 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-2xl shadow-inner">
-            📁
+          <div className="w-14 h-14 rounded-2xl bg-[var(--zy-blue-bg)] text-[var(--zy-blue)] flex items-center justify-center">
+            <FolderOpen aria-hidden="true" size={26} strokeWidth={1.75} />
           </div>
         </div>
 
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 font-sans tracking-tight">
+        <h1 className="text-[22px] font-black text-[var(--zy-text)] mb-2">
           智能标书编写 Agent 工作台
         </h1>
         <p className="text-xs md:text-sm text-[var(--muted)] mb-8 leading-relaxed max-w-md mx-auto">
@@ -109,7 +110,9 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
         {toast && (
           <div className="mb-5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-700 flex items-start justify-between gap-3 text-left">
             <span>{toast}</span>
-            <button onClick={() => setToast(null)} className="text-amber-400 hover:text-amber-600 shrink-0">✕</button>
+            <button onClick={() => setToast(null)} aria-label="关闭提示" className="text-amber-400 hover:text-amber-600 shrink-0">
+              <X aria-hidden="true" size={14} />
+            </button>
           </div>
         )}
 
@@ -130,8 +133,8 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
                 onClick={handleZoneClick}
                 className={`border-2 border-dashed rounded-2xl p-8 md:p-10 cursor-pointer transition-all ${
                   isDragActive
-                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] scale-102'
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50/50'
+                    ? 'border-[var(--zy-blue)] bg-[var(--zy-blue-bg)]'
+                    : 'border-[var(--zy-input)] hover:border-[var(--zy-muted-2)] hover:bg-[var(--zy-bg)]'
                 }`}
               >
                 <input
@@ -141,7 +144,7 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                <span className="text-4xl block mb-3 animate-bounce">📤</span>
+                <CloudUpload aria-hidden="true" size={36} strokeWidth={1.5} className="mx-auto mb-3 text-[var(--zy-blue)]" />
                 <p className="text-sm font-semibold text-gray-700 mb-1 leading-snug">
                   拖拽招标文件到此处，或点击浏览文件
                 </p>
@@ -151,15 +154,15 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
               </div>
 
               <div className="h-px bg-gray-200 relative">
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--surface)] px-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  Or
+                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--surface)] px-3 text-[11px] text-[var(--zy-muted)]">
+                  或
                 </span>
               </div>
 
               <button
                 type="button"
                 onClick={quickStart}
-                className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-black transition active:scale-95 shadow-sm"
+                className="w-full py-2.5 rounded-lg bg-[var(--zy-blue)] text-white text-[13px] font-bold hover:bg-[var(--zy-blue-dark)] transition active:scale-[0.98]"
               >
                 选择本地真实招标文件并接入后端
               </button>
@@ -198,9 +201,9 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
         </AnimatePresence>
 
         {!isParsing && (
-          <div className="mt-6 flex items-start gap-2 rounded-xl bg-[var(--accent-soft)] border border-blue-100 px-4 py-3 text-left">
-            <span className="text-base shrink-0">🗄️</span>
-            <p className="text-[11px] leading-relaxed text-gray-600">
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-[var(--zy-bg)] px-4 py-3 text-left">
+            <Database aria-hidden="true" size={16} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[var(--zy-blue)]" />
+            <p className="text-[11.5px] leading-relaxed text-[var(--zy-text-2)]">
               编写将自动调用<b className="text-[var(--accent)]">企业资料库</b>(5 大底座)匹配资质、人员、业绩与模板。可先到「资料库」菜单补齐资料。
             </p>
           </div>
@@ -209,7 +212,7 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
 
       {!isParsing && (
         <div className="w-full max-w-xl">
-          <h2 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2.5 px-1">最近项目</h2>
+          <h2 className="text-[13.5px] font-black text-[var(--zy-text)] mb-2.5 px-1">最近项目</h2>
           <RecentProjects onOpen={onOpenProject} />
         </div>
       )}

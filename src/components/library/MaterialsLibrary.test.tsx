@@ -33,7 +33,7 @@ describe('MaterialsLibrary (backend-connected)', () => {
     render(<MaterialsLibrary materials={[]} matched={[]} />);
     expect(await screen.findByText('CMA 资质证书')).toBeInTheDocument();
     expect(screen.getByText('某三甲医院计量业绩')).toBeInTheDocument();
-    expect(screen.getByText('📎 含文件')).toBeInTheDocument(); // file_path 素材显示附件标记
+    expect(screen.getByText('含文件')).toBeInTheDocument(); // file_path 素材显示附件标记
     expect(listMaterials).toHaveBeenCalled();
   });
 

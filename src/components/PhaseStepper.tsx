@@ -1,3 +1,5 @@
+import { Check } from 'lucide-react';
+
 export const STAGES = [
   { n: 1, 名: '解析' },
   { n: 2, 名: '策略' },
@@ -16,7 +18,7 @@ interface Props {
 
 export function PhaseStepper({ activeStage }: Props) {
   return (
-    <ol className="flex items-center gap-1.5 md:gap-3 text-xs overflow-x-auto py-1" role="list">
+    <ol className="flex items-center gap-1.5 md:gap-2 text-xs overflow-x-auto py-1" role="list">
       {STAGES.map((s) => {
         const isDone = s.n < activeStage;
         const isActive = s.n === activeStage;
@@ -24,24 +26,24 @@ export function PhaseStepper({ activeStage }: Props) {
           <li
             key={s.n}
             data-active={isActive}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded transition-all shrink-0 ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors shrink-0 ${
               isActive
-                ? 'bg-[var(--accent)] text-white font-medium shadow-sm'
+                ? 'bg-[var(--zy-blue)] text-white font-bold'
                 : isDone
-                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-medium'
-                : 'bg-gray-100 text-[var(--muted)]'
+                ? 'bg-[var(--zy-blue-bg)] text-[var(--zy-blue)] font-bold'
+                : 'bg-[var(--zy-bg)] text-[var(--zy-muted)]'
             }`}
           >
             <span
-              className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-mono ${
                 isActive
-                  ? 'bg-white text-[var(--accent)]'
+                  ? 'bg-white text-[var(--zy-blue)]'
                   : isDone
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-gray-300 text-gray-600'
+                  ? 'bg-[var(--zy-blue)] text-white'
+                  : 'bg-[var(--zy-input)] text-[var(--zy-text-2)]'
               }`}
             >
-              {isDone ? '✓' : s.n}
+              {isDone ? <Check aria-hidden="true" size={10} strokeWidth={3} /> : s.n}
             </span>
             <span>{s.名}</span>
           </li>

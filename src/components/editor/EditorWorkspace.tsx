@@ -1,3 +1,4 @@
+import { FileText } from 'lucide-react';
 import type { EngineState } from '../../engine/ScenarioEngine';
 import type { WorkspaceEngine } from '../../engine/sources';
 import type { Scenario } from '../../engine/demo/types';
@@ -21,9 +22,9 @@ export function EditorWorkspace({ state, scenario, engine, onOpenLibrary }: Prop
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* 编辑器子头 */}
-      <div className="h-11 shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 flex items-center justify-between">
+      <div className="h-11 shrink-0 border-b border-[var(--zy-line)] bg-[var(--surface)] px-4 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm">📄</span>
+          <FileText aria-hidden="true" size={15} strokeWidth={1.75} className="shrink-0 text-[var(--zy-blue)]" />
           <span className="text-sm font-semibold text-gray-800 truncate">投标文件.docx</span>
           <span className="text-[11px] text-[var(--muted)] truncate hidden md:inline">· {scenario.meta.项目名}</span>
           <span className="ml-2 text-[10px] font-medium text-[var(--muted)] shrink-0">

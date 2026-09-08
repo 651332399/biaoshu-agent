@@ -268,7 +268,7 @@ function ProposalCardView({
           type="button"
           disabled={terminal}
           onClick={onAccept}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-md bg-[var(--zy-blue)] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[var(--zy-blue-dark)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           采纳
         </button>

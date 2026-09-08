@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { listProjects, type ProjectSummary } from '../../lib/api';
 
 export type ProjectStatus = ProjectSummary['status'];
@@ -10,17 +11,18 @@ export interface RecentProject {
   meta: string;
 }
 
+/* chip 配色对齐平台 .zy-chip--*(前景 / 背景成对,无边线) */
 const STATUS_META: Record<ProjectStatus, { label: string; cls: string }> = {
-  active: { label: '进行中', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-  draft: { label: '草稿', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+  active: { label: '进行中', cls: 'bg-blue-50 text-blue-600' },
+  draft: { label: '草稿', cls: 'bg-gray-100 text-gray-600' },
   generation_started: { label: '生成中', cls: 'bg-blue-50 text-blue-600' },
   generated: { label: '已生成', cls: 'bg-blue-50 text-blue-600' },
-  server_precheck_failed: { label: '预检失败', cls: 'bg-red-50 text-red-700 border-red-200' },
-  server_precheck_passed: { label: '预检通过', cls: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  awaiting_wps_acceptance: { label: '待 WPS 验收', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  server_precheck_failed: { label: '预检失败', cls: 'bg-red-50 text-red-600' },
+  server_precheck_passed: { label: '预检通过', cls: 'bg-cyan-50 text-cyan-600' },
+  awaiting_wps_acceptance: { label: '待 WPS 验收', cls: 'bg-amber-50 text-amber-600' },
   wps_verification_failed: { label: 'WPS 验收失败', cls: 'bg-red-50 text-red-600' },
-  archiving: { label: '归档中', cls: 'bg-violet-50 text-violet-700 border-violet-200' },
-  accepted: { label: '已验收', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  archiving: { label: '归档中', cls: 'bg-violet-50 text-violet-600' },
+  accepted: { label: '已验收', cls: 'bg-emerald-50 text-emerald-600' },
   superseded: { label: '已失效', cls: 'bg-gray-100 text-gray-600' },
 };
 
@@ -29,16 +31,16 @@ export function RecentProjectRow({ project, onOpen }: { project: RecentProject; 
   return (
     <button
       onClick={() => onOpen?.(project.id)}
-      className="w-full text-left flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 hover:border-gray-300 hover:shadow-2xs transition cursor-pointer"
+      className="w-full text-left flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-[var(--zy-blue-bg)] transition-colors cursor-pointer"
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-800 truncate">{project.name}</span>
-          <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${st.cls}`}>{st.label}</span>
+          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-md ${st.cls}`}>{st.label}</span>
         </div>
         <p className="mt-0.5 text-[11px] text-[var(--muted)] truncate">{project.meta}</p>
       </div>
-      <span className="shrink-0 text-[var(--muted)]">→</span>
+      <ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} className="shrink-0 text-[var(--zy-muted)]" />
     </button>
   );
 }
@@ -90,12 +92,12 @@ export function ProjectsList({ onOpen, onNew }: { onOpen?: (id: string) => void;
       <div className="mx-auto max-w-3xl">
         <header className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">🕓 我的标书项目</h1>
-            <p className="mt-1 text-xs text-[var(--muted)]">继续未完成的标书,或新建一个项目。</p>
+            <h1 className="text-[22px] font-black text-[var(--zy-text)]">我的标书项目</h1>
+            <p className="mt-1 text-[13px] text-[var(--muted)]">继续未完成的标书,或新建一个项目。</p>
           </div>
           <button
             onClick={onNew}
-            className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90 active:scale-95 transition"
+            className="px-4 py-2.5 rounded-lg bg-[var(--zy-blue)] text-white text-[13px] font-bold hover:bg-[var(--zy-blue-dark)] active:scale-[0.98] transition"
           >
             ＋ 新建标书
           </button>

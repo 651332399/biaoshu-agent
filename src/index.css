@@ -1,23 +1,168 @@
 @import "tailwindcss";
 
+/* ============================================================
+   智能标书编写 Agent · 设计 token
+   对齐 agent-platform/apps/web/src/design.css(归序AI v3 原型设计系统)。
+   本项目走 Tailwind 4:下面的 @theme 把 Tailwind 调色板重映射到平台 token,
+   现有 text-gray-700 / bg-blue-50 / border-amber-200 … 类无需改写即落到平台色。
+   改色先对照 design.css,两边保持一致;gray-700 是唯一不在原型里的过渡值。
+   ============================================================ */
+
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  /* 中性色:平台文本阶 + 线条阶(冷灰,非纯灰) */
+  --color-gray-50: #f3f5f9;
+  --color-gray-100: #eef1f7;
+  --color-gray-200: #e4e8f0;
+  --color-gray-300: #d5dcea;
+  --color-gray-400: #a8b2c2;
+  --color-gray-500: #8492a8;
+  --color-gray-600: #5b6778;
+  --color-gray-700: #3d4859;
+  --color-gray-800: #232a38;
+  --color-gray-900: #232a38;
+  --color-gray-950: #151a24;
+  --color-slate-50: #f3f5f9;
+  --color-slate-100: #eef1f7;
+  --color-slate-200: #e4e8f0;
+  --color-slate-300: #d5dcea;
+  --color-slate-400: #a8b2c2;
+  --color-slate-500: #8492a8;
+  --color-slate-600: #5b6778;
+  --color-slate-700: #3d4859;
+  --color-slate-800: #232a38;
+  --color-slate-900: #232a38;
+  --color-slate-950: #151a24;
+
+  /* 品牌蓝 */
+  --color-blue-50: #eaf0fd;
+  --color-blue-100: #d7e2fa;
+  --color-blue-200: #bccdf5;
+  --color-blue-300: #9eb7f2;
+  --color-blue-400: #5f86e0;
+  --color-blue-500: #2f5fd0;
+  --color-blue-600: #2f5fd0;
+  --color-blue-700: #1e46a8;
+  --color-blue-800: #1e46a8;
+  --color-blue-900: #17367f;
+
+  /* 琥珀(待确认 / 警示) */
+  --color-amber-50: #fdf5e5;
+  --color-amber-100: #f9ead0;
+  --color-amber-200: #f2dcb0;
+  --color-amber-300: #e8c684;
+  --color-amber-400: #d9a64f;
+  --color-amber-500: #c98a2b;
+  --color-amber-600: #c98a2b;
+  --color-amber-700: #a4701f;
+  --color-amber-800: #8a5a14;
+
+  /* 绿(通过 / 命中) */
+  --color-emerald-50: #e5f6ee;
+  --color-emerald-100: #d3efe1;
+  --color-emerald-200: #b4e2cd;
+  --color-emerald-300: #86d0b0;
+  --color-emerald-400: #4fb98d;
+  --color-emerald-500: #1d9e6c;
+  --color-emerald-600: #1d9e6c;
+  --color-emerald-700: #1d7f57;
+  --color-emerald-800: #176647;
+
+  /* 红(废标 / 失败) */
+  --color-red-50: #fdf1ef;
+  --color-red-100: #f7dcd6;
+  --color-red-200: #f2d3cc;
+  --color-red-300: #e9b0a5;
+  --color-red-400: #dc7b69;
+  --color-red-500: #c4442a;
+  --color-red-600: #c4442a;
+  --color-red-700: #a5361f;
+  --color-red-800: #7a1f14;
+
+  /* 紫(归档 / 次级强调) */
+  --color-violet-50: #f0ecfa;
+  --color-violet-100: #e4ddf6;
+  --color-violet-200: #cfc3ee;
+  --color-violet-300: #b3a2e4;
+  --color-violet-400: #967fd9;
+  --color-violet-500: #7a5fd0;
+  --color-violet-600: #7a5fd0;
+  --color-violet-700: #5b3fa8;
+  --color-violet-800: #4a3389;
+
+  /* 青(预检通过) */
+  --color-cyan-50: #e8f5f9;
+  --color-cyan-100: #d3ecf3;
+  --color-cyan-200: #b0dde9;
+  --color-cyan-300: #82c7d9;
+  --color-cyan-400: #52acc4;
+  --color-cyan-500: #2f8fa8;
+  --color-cyan-600: #2f8fa8;
+  --color-cyan-700: #23718a;
+  --color-cyan-800: #1c5a6e;
+
+  /* 圆角:chip 6 / 按钮 10 / 灰底块 12 / 卡片 16 */
+  --radius-lg: 10px;
+
+  /* 平台卡片靠 1px 边线分层,阴影只留极淡一档;弹层沿用 design.css 的浮层阴影 */
+  --shadow-2xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 1px 3px rgba(16, 24, 40, 0.07), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 32px rgba(20, 26, 40, 0.14);
+  --shadow-xl: 0 24px 64px rgba(20, 26, 40, 0.25);
+  --shadow-2xl: 0 24px 64px rgba(20, 26, 40, 0.25);
 }
 
 :root {
-  --accent: #1e40af; /* Deep royal corporate blue */
-  --accent-soft: #eff6ff; /* Soft sky blue bg */
+  /* 平台语义色(与 design.css 同名同值) */
+  --zy-bg: #f3f5f9;
+  --zy-text: #232a38;
+  --zy-text-2: #5b6778;
+  --zy-muted: #8492a8;
+  --zy-muted-2: #a8b2c2;
+  --zy-line: #e4e8f0;
+  --zy-line-soft: #eef1f7;
+  --zy-line-row: #f2f4f9;
+  --zy-input: #d5dcea;
+  --zy-blue: #2f5fd0;
+  --zy-blue-dark: #1e46a8;
+  --zy-blue-bg: #eaf0fd;
+  --zy-purple: #7a5fd0;
+  --zy-purple-dark: #5b3fa8;
+  --zy-purple-bg: #f0ecfa;
+  --zy-green: #1d9e6c;
+  --zy-green-dark: #1d7f57;
+  --zy-green-bg: #e5f6ee;
+  --zy-amber: #c98a2b;
+  --zy-amber-bg: #fdf5e5;
+  --zy-red: #c4442a;
+  --zy-red-bg: #fdf1ef;
+  --zy-red-line: #f2d3cc;
+  --zy-red-deep: #7a1f14;
+  --zy-red-deep-bg: #f7dcd6;
+  --zy-grey: #5b6778;
+  --zy-grey-bg: #eef1f7;
+  --zy-teal: #2f8fa8;
+  --zy-teal-bg: #e8f5f9;
+  --zy-orange: #d0722f;
+  --zy-orange-bg: #fdf0ea;
+
+  /* 本项目沿用的旧 token 名,统一别名到平台色;新代码直接用 --zy-* */
+  --accent: var(--zy-blue);
+  --accent-soft: var(--zy-blue-bg);
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --muted: #64748b;
-  --bad: #be123c; /* Rose/Crimson for hard compliance warnings */
-  --ok: #047857; /* Emerald for passed compliance */
-  --ok-soft: #dcfce7;
-  --canvas: #eef1f6; /* 1c workspace canvas bg */
-  --paper: #ffffff; /* Document paper surface */
-  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif; /* Bid document body */
+  --border: var(--zy-line);
+  --text: var(--zy-text);
+  --muted: var(--zy-muted);
+  --bad: var(--zy-red);
+  --ok: var(--zy-green);
+  --ok-soft: var(--zy-green-bg);
+  --canvas: var(--zy-bg);
+  --paper: #ffffff; /* 标书纸张面 */
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif; /* 标书正文 */
 }
 
 body {
@@ -29,19 +174,24 @@ body {
   padding: 0;
 }
 
-/* 1c document paper body uses serif for a real-bid feel */
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* 标书纸张正文用衬线,贴近真实投标文件 */
 .doc-serif {
   font-family: var(--font-serif);
 }
 
-/* Annotation bubble subtle pulse to draw the eye to a pending decision */
+/* 待决策批注气泡的轻脉冲 */
 @keyframes annotationGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(190, 18, 60, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(190, 18, 60, 0.12); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 68, 42, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(196, 68, 42, 0.12); }
 }
 .annotation-glow { animation: annotationGlow 2.4s ease-in-out infinite; }
 
-/* Custom fade-in and scale-in animations for a seamless reactive UI look */
+/* 进场动效:与平台 motion.css 同一缓动 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -60,7 +210,7 @@ body {
   animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Scrollbar styling */
+/* 滚动条 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -71,25 +221,25 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--zy-input);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--zy-muted-2);
 }
 
-/* Chapter Highlight Animation */
+/* 章节定位高亮 */
 @keyframes highlightPulse {
   0% {
-    outline: 3px solid #3b82f6;
+    outline: 3px solid var(--zy-blue);
     outline-offset: 2px;
-    background-color: #eff6ff;
+    background-color: var(--zy-blue-bg);
   }
   50% {
-    outline: 3px solid #1d4ed8;
+    outline: 3px solid var(--zy-blue-dark);
     outline-offset: 2px;
-    background-color: #eff6ff;
+    background-color: var(--zy-blue-bg);
   }
   100% {
     outline: 3px solid transparent;
@@ -102,6 +252,7 @@ body {
   animation: highlightPulse 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* 纸张编辑器:模拟 Word 正文,颜色刻意不走平台 token */
 .paper-editor {
   color: #111827;
   font-size: 15px;
@@ -145,11 +296,11 @@ body {
 }
 
 .paper-editor .selectedCell::after {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(47, 95, 208, 0.12);
 }
 
 .paper-editor mark {
-  background: #fef3c7;
-  border-bottom: 1px solid #f59e0b;
+  background: var(--zy-amber-bg);
+  border-bottom: 1px solid var(--zy-amber);
   padding: 0 1px;
 }
