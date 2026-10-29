@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Ban, ClipboardList, FlaskConical, Paperclip, ScrollText, Search, Trophy, UserRound, X, type LucideIcon } from 'lucide-react';
 import type { Material, MaterialCategory } from '../../engine/demo/types';
 import type { BackendMaterial } from '../../engine/types';
 import { listMaterials, uploadMaterial, deleteMaterial, ApiError } from '../../lib/api';
+import { FileUpload, Select } from '../../vendor/zy-ui';
 
 interface Props {
   materials: Material[];
@@ -231,7 +232,7 @@ function UploadForm({
   const [name, setName] = useState('');
   const [keywords, setKeywords] = useState('');
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
 
   const submit = async () => {
     if (!name.trim()) {
@@ -240,7 +241,6 @@ function UploadForm({
     }
     setBusy(true);
     try {
-      const file = fileRef.current?.files?.[0] ?? null;
       await uploadMaterial(
         {
           category,
@@ -252,7 +252,7 @@ function UploadForm({
       await onDone(`已上传「${name.trim()}」。`);
       setName('');
       setKeywords('');
-      if (fileRef.current) fileRef.current.value = '';
+      setFile(null);
     } catch (err) {
       onError(err instanceof ApiError ? `上传失败:${err.message}` : '上传失败。');
     } finally {
@@ -263,16 +263,13 @@ function UploadForm({
   return (
     <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 space-y-3">
       <div className="flex flex-wrap gap-3">
-        <select
+        <Select
           value={category}
-          onChange={(e) => setCategory(e.target.value as MaterialCategory)}
+          onValueChange={(next) => setCategory(next as MaterialCategory)}
+          options={CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
           aria-label="素材分类"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>{c.label}</option>
-          ))}
-        </select>
+          className="w-32"
+        />
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -288,8 +285,15 @@ function UploadForm({
         aria-label="关键词"
         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
       />
-      <div className="flex items-center gap-3">
-        <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.pdf" aria-label="证照/图片文件" className="text-xs" />
+      <div className="flex items-end gap-3">
+        <FileUpload
+          value={file}
+          onFiles={(files) => setFile(files[0] ?? null)}
+          accept=".jpg,.jpeg,.png,.pdf"
+          hint="JPG / PNG / PDF"
+          aria-label="证照/图片文件"
+          className="flex-1"
+        />
         <button
           onClick={submit}
           disabled={busy}

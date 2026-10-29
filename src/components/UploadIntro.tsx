@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CloudUpload, Database, FolderOpen, X } from 'lucide-react';
 import { RecentProjects } from './projects/ProjectsList';
+import { HiddenFileInput } from '../vendor/zy-ui';
 
 interface Props {
   onStart: (file: File | string) => void;
@@ -137,11 +138,11 @@ export function UploadIntro({ onStart, onOpenProject }: Props) {
                     : 'border-[var(--zy-input)] hover:border-[var(--zy-muted-2)] hover:bg-[var(--zy-bg)]'
                 }`}
               >
-                <input
+                <HiddenFileInput
                   ref={fileInputRef}
-                  type="file"
+                  tabIndex={-1}
+                  aria-hidden="true"
                   accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/octet-stream"
-                  className="hidden"
                   onChange={handleFileChange}
                 />
                 <CloudUpload aria-hidden="true" size={36} strokeWidth={1.5} className="mx-auto mb-3 text-[var(--zy-blue)]" />

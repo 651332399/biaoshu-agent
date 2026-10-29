@@ -11,7 +11,7 @@ const GROUP_META: Record<string, { dot: string; label: string }> = {
   废标: { dot: 'bg-[var(--bad)]', label: '废标红线(强制性)' },
   资质: { dot: 'bg-blue-500', label: '资质要求' },
   评分: { dot: 'bg-emerald-500', label: '评分项' },
-  技术参数: { dot: 'bg-indigo-500', label: '技术参数' },
+  技术参数: { dot: 'bg-violet-500', label: '技术参数' },
   商务条款: { dot: 'bg-amber-500', label: '商务条款' },
   格式: { dot: 'bg-gray-400', label: '格式要求' },
 };

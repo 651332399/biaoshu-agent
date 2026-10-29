@@ -1,4 +1,5 @@
 import type { PlaybackStatus } from '../engine/ScenarioEngine';
+import { Select } from '../vendor/zy-ui';
 
 interface Props {
   status: PlaybackStatus;
@@ -44,18 +45,13 @@ export function PlaybackControls({ status, speed, onPlay, onPause, onStep, onSpe
 
       <div className="flex items-center gap-1 text-xs border border-[var(--border)] bg-white rounded-lg px-2 py-1.5 shadow-sm shrink-0">
         <span className="text-[var(--muted)]">倍速:</span>
-        <select
+        <Select
           aria-label="倍速"
-          value={speed}
-          onChange={(e) => onSpeed(Number(e.target.value))}
-          className="font-medium bg-transparent focus:outline-none cursor-pointer text-gray-700"
-        >
-          {[0.5, 1, 2, 4].map((x) => (
-            <option key={x} value={x}>
-              {x}x
-            </option>
-          ))}
-        </select>
+          size="sm"
+          value={String(speed)}
+          onValueChange={(next) => onSpeed(Number(next))}
+          options={[0.5, 1, 2, 4].map((x) => ({ value: String(x), label: `${x}x` }))}
+        />
       </div>
     </div>
   );

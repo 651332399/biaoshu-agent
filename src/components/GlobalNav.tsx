@@ -1,4 +1,4 @@
-import { FilePenLine, FolderClock, Library, LogOut, type LucideIcon } from 'lucide-react';
+import { FilePenLine, FolderClock, Library, type LucideIcon } from 'lucide-react';
 
 export type AppView = 'editor' | 'library' | 'projects';
 
@@ -20,23 +20,14 @@ interface Props {
 }
 
 /** 全局左侧图标导航栏——编辑 / 资料库 / 项目 三个一级页面。
- * 视觉沿用归序AI 平台侧栏(白底 + 右边线 + 蓝底选中态),宽度保持 64px。 */
+ * 视觉沿用智员平台侧栏(白底 + 右边线 + 蓝底选中态),宽度保持 64px。
+ * 品牌、账号区与「返回智员平台」在顶栏 AppTopbar。 */
 export function GlobalNav({ view, onNavigate }: Props) {
-  // 平台以 /biaoshu/ 子路径构建；独立根路径部署没有同域员工市场。
-  const platformHosted = import.meta.env.BASE_URL.replace(/\/+$/, '') === '/biaoshu';
-
   return (
     <nav
       aria-label="全局导航"
       className="w-16 shrink-0 h-full overflow-y-auto bg-white border-r border-[var(--zy-line)] flex flex-col items-center py-4 gap-1 z-20"
     >
-      <div
-        aria-hidden="true"
-        className="w-9 h-9 rounded-[10px] bg-[linear-gradient(135deg,#2f5fd0,#7a5fd0)] text-white flex items-center justify-center text-[15px] font-black mb-4"
-      >
-        标
-      </div>
-
       <div className="flex-1 flex flex-col gap-1 w-full items-center">
         {ITEMS.map((item) => {
           const active = view === item.view;
@@ -63,20 +54,6 @@ export function GlobalNav({ view, onNavigate }: Props) {
         })}
       </div>
 
-      {platformHosted && (
-        <a
-          href="/market"
-          target="_top"
-          className="w-12 shrink-0 py-2 mb-2 rounded-[10px] flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--zy-text-2)] hover:bg-[var(--zy-bg)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--zy-blue)]"
-        >
-          <LogOut aria-hidden="true" size={18} strokeWidth={1.75} className="text-[var(--zy-muted)]" />
-          <span>返回平台</span>
-        </a>
-      )}
-
-      <div className="w-9 h-9 shrink-0 rounded-[9px] bg-[var(--zy-blue-bg)] text-[var(--zy-blue)] flex items-center justify-center text-sm font-black">
-        迈
-      </div>
     </nav>
   );
 }
