@@ -8,6 +8,7 @@ import { apiUrl } from '../../lib/apiBase';
 import { DecisionCard } from '../DecisionCard';
 import type { EditorPhase } from './phase';
 import { PHASE_LABEL } from './phase';
+import { HiddenFileInput } from '../../vendor/zy-ui';
 
 interface Props {
   state: EngineState;
@@ -131,11 +132,11 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
           </div>
         )}
         <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--accent)]">
-          <input
+          <HiddenFileInput
             ref={fileInputRef}
-            type="file"
+            tabIndex={-1}
+            aria-hidden="true"
             multiple
-            className="hidden"
             onChange={(event) => {
               setFiles(Array.from(event.target.files ?? []));
               event.currentTarget.value = '';
@@ -154,7 +155,7 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="和 Copilot 对话或补充资料…"
-            className="flex-1 text-xs outline-none bg-transparent"
+            className="flex-1 text-xs focus:outline-none bg-transparent"
           />
           <button onClick={send} className="text-[var(--accent)] font-bold text-sm hover:opacity-80 cursor-pointer">
             {state.chat.sending ? '…' : '➤'}

@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import type { BackendExportPlan, BackendOutline, BackendReport, BackendRequirement, BackendTenderSpec } from '../engine/types';
 import type { Step } from '../engine/demo/types';
+import { Checkbox } from '../vendor/zy-ui';
 
 interface Props {
   card: Step;
@@ -436,12 +437,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
                 </div>
               )}
               <label className="flex items-start gap-2 rounded-md border border-blue-100 bg-blue-50 p-2 text-[11px] text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={saveAsTemplate}
-                  onChange={(event) => setSaveAsTemplate(event.target.checked)}
-                  className="mt-0.5"
-                />
+                <Checkbox checked={saveAsTemplate} onCheckedChange={setSaveAsTemplate} />
                 <span>保存为结构模板（仅保存分册、样式和表单结构，不保存项目名称、编号或采购人）</span>
               </label>
             </div>
@@ -463,11 +459,11 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
                     className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                   <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={Boolean(manualConfirmed[field])}
-                      onChange={(event) => {
-                        setManualConfirmed((current) => ({ ...current, [field]: event.target.checked }));
+                      aria-label={`确认${field}已人工核对补录`}
+                      onCheckedChange={(checked) => {
+                        setManualConfirmed((current) => ({ ...current, [field]: checked }));
                         setError(null);
                       }}
                     />

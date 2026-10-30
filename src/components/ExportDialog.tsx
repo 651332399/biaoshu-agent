@@ -26,6 +26,7 @@ import {
 } from '../lib/api';
 import { getDisplayVolumes } from '../lib/exportPlanView';
 import { apiUrl } from '../lib/apiBase';
+import { Checkbox, HiddenFileInput } from '../vendor/zy-ui';
 
 
 interface Props {
@@ -449,12 +450,10 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
                           ) : (
                             <Upload className="h-4 w-4 shrink-0 text-gray-500" />
                           )}
-                          <input
-                            type="file"
+                          <HiddenFileInput
                             accept={slot.accept}
                             disabled={!canUpload || busy}
                             aria-label={`上传 ${artifact.name} ${slot.label}`}
-                            className="sr-only"
                             onChange={(event) => {
                               void handleUpload(artifact.id, slot.type, event.target.files?.[0]);
                               event.target.value = '';
@@ -475,11 +474,9 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
               <label className="mt-2 inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                 <Upload className="h-4 w-4" />
                 {fontInventory ? '字体清单已加载' : '上传字体清单 JSON'}
-                <input
-                  type="file"
+                <HiddenFileInput
                   accept="application/json,.json"
                   aria-label="上传 WPS 工作站字体清单"
-                  className="sr-only"
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
@@ -516,15 +513,12 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
                     canUpload ? 'cursor-pointer border-gray-200 bg-white hover:bg-gray-50' : 'cursor-default border-gray-100 bg-gray-50 text-gray-400'
                   }`}
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={checks[item.key]}
                     disabled={!canUpload}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
+                    onCheckedChange={(checked) => {
                       setChecks((previous) => ({ ...previous, [item.key]: checked }));
                     }}
-                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
                   />
                   <span>{item.label}</span>
                 </label>

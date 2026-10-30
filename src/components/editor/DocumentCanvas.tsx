@@ -104,7 +104,7 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         {state.pricingRevealed && (
-          <div className="shrink-0 bg-[#e9eef5] px-6 pt-6">
+          <div className="shrink-0 bg-[var(--zy-bg)] px-6 pt-6">
             <div className="mx-auto max-w-3xl">
               <PricingPanel pricing={scenario.pricing} />
             </div>

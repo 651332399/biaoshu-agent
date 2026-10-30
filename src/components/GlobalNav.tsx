@@ -20,20 +20,14 @@ interface Props {
 }
 
 /** 全局左侧图标导航栏——编辑 / 资料库 / 项目 三个一级页面。
- * 视觉沿用归序AI 平台侧栏(白底 + 右边线 + 蓝底选中态),宽度保持 64px:平台经 iframe 嵌入本页,不再重复一条宽侧栏。 */
+ * 视觉沿用智员平台侧栏(白底 + 右边线 + 蓝底选中态),宽度保持 64px。
+ * 品牌、账号区与「返回智员平台」在顶栏 AppTopbar。 */
 export function GlobalNav({ view, onNavigate }: Props) {
   return (
     <nav
       aria-label="全局导航"
-      className="w-16 shrink-0 h-full bg-white border-r border-[var(--zy-line)] flex flex-col items-center py-4 gap-1 z-20"
+      className="w-16 shrink-0 h-full overflow-y-auto bg-white border-r border-[var(--zy-line)] flex flex-col items-center py-4 gap-1 z-20"
     >
-      <div
-        aria-hidden="true"
-        className="w-9 h-9 rounded-[10px] bg-[linear-gradient(135deg,#2f5fd0,#7a5fd0)] text-white flex items-center justify-center text-[15px] font-black mb-4"
-      >
-        标
-      </div>
-
       <div className="flex-1 flex flex-col gap-1 w-full items-center">
         {ITEMS.map((item) => {
           const active = view === item.view;
@@ -60,9 +54,6 @@ export function GlobalNav({ view, onNavigate }: Props) {
         })}
       </div>
 
-      <div className="w-9 h-9 rounded-[9px] bg-[var(--zy-blue-bg)] text-[var(--zy-blue)] flex items-center justify-center text-sm font-black">
-        迈
-      </div>
     </nav>
   );
 }

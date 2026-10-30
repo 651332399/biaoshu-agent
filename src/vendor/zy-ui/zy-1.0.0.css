@@ -1,0 +1,468 @@
+/* ============================================================
+   智员设计 token + 基础元素 + 通用原语（与框架无关）
+   来源：prototype/Agent平台原型v3.dc.html（2026-09-07 版）。
+   每个值都从原型内联样式逐字抄出；改这里之前先对照原型。
+   平台 apps/web 直接引入；构建时另发布为 /design/zy-<version>.css 供任何技术栈 <link>（见 DESIGN.md「员工应用规范」）。
+   改动 token 或原语时同步升 package.json 的 version，已发布的版本文件内容不变。
+   ============================================================ */
+:root {
+  /* 覆盖 styles.css 的 token，让残留旧组件也落到原型调色板 */
+  --font-sans: "Noto Sans SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --canvas: #f3f5f9;
+  --surface: #fff;
+  --brand: #2f5fd0;
+  --brand-strong: #1e46a8;
+  --brand-tint: #eaf0fd;
+  --text: #232a38;
+  --text-2: #5b6778;
+  --text-4: #8492a8;
+  --line: #e4e8f0;
+  --line-input: #d5dcea;
+  --line-soft: #eef1f7;
+
+  /* 原型语义色（chip 前景 / 背景成对） */
+  --zy-bg: #f3f5f9;
+  --zy-text: #232a38;
+  --zy-text-2: #5b6778;
+  --zy-muted: #8492a8;
+  --zy-muted-2: #a8b2c2;
+  --zy-line: #e4e8f0;
+  --zy-line-soft: #eef1f7;
+  --zy-line-row: #f2f4f9;
+  --zy-input: #d5dcea;
+  --zy-blue: #2f5fd0;
+  --zy-blue-dark: #1e46a8;
+  --zy-blue-bg: #eaf0fd;
+  --zy-purple: #7a5fd0;
+  --zy-purple-dark: #5b3fa8;
+  --zy-purple-bg: #f0ecfa;
+  --zy-green: #1d9e6c;
+  --zy-green-dark: #1d7f57;
+  --zy-green-bg: #e5f6ee;
+  --zy-amber: #c98a2b;
+  --zy-amber-bg: #fdf5e5;
+  --zy-red: #c4442a;
+  --zy-red-bg: #fdf1ef;
+  --zy-red-line: #f2d3cc;
+  --zy-red-deep: #7a1f14;
+  --zy-red-deep-bg: #f7dcd6;
+  --zy-grey: #5b6778;
+  --zy-grey-bg: #eef1f7;
+  --zy-teal: #2f8fa8;
+  --zy-teal-bg: #e8f5f9;
+  --zy-orange: #d0722f;
+  --zy-orange-bg: #fdf0ea;
+  /* 表面与浮层高度（值见 DESIGN.md「Surface」「Shadow Vocabulary」）；components/ui 只引用这些变量 */
+  --zy-surface: #fff;
+  --zy-shimmer: #f8faff;
+  --zy-shadow-popover: 0 12px 32px rgba(20, 26, 40, 0.14);
+  --zy-shadow-dialog: 0 24px 64px rgba(20, 26, 40, 0.25);
+  --zy-scrim: rgba(20, 26, 40, 0.45);
+  /* 焦点环（与 styles.css 同值；独立引用本样式表时组件库也能用） */
+  --ring: 0 0 0 3px rgba(47, 95, 208, 0.22);
+
+  font-family: var(--font-sans);
+  color: var(--zy-text);
+  background: var(--zy-bg);
+}
+
+body {
+  margin: 0;
+  background: var(--zy-bg);
+  font-family: var(--font-sans);
+  color: var(--zy-text);
+}
+
+a {
+  color: var(--zy-blue);
+}
+
+a:hover {
+  color: var(--zy-blue-dark);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ---------- 卡片 / 灰底块 ---------- */
+.zy-card {
+  background: #fff;
+  border: 1px solid var(--zy-line);
+  border-radius: 16px;
+  padding: 20px 22px;
+}
+
+.zy-card--tight {
+  padding: 18px 20px;
+}
+
+.zy-card--clickable {
+  cursor: pointer;
+}
+
+.zy-well {
+  background: var(--zy-bg);
+  border-radius: 12px;
+  padding: 13px 15px;
+}
+
+.zy-well--lg {
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.zy-well--sm {
+  border-radius: 12px;
+  padding: 11px;
+}
+
+/* ---------- 指标卡 ---------- */
+.zy-stat-label {
+  font-size: 12px;
+  color: var(--zy-muted);
+}
+
+.zy-stat-value {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.zy-stat-value--md {
+  font-size: 18px;
+  margin-top: 4px;
+}
+
+.zy-stat-sub {
+  font-size: 11.5px;
+  color: var(--zy-muted);
+  margin-top: 4px;
+}
+
+/* ---------- 标签 chip ---------- */
+.zy-chip {
+  display: inline;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--zy-muted);
+  background: var(--zy-bg);
+}
+
+.zy-chip--blue { color: var(--zy-blue); background: var(--zy-blue-bg); }
+.zy-chip--purple { color: var(--zy-purple); background: var(--zy-purple-bg); }
+.zy-chip--green { color: var(--zy-green); background: var(--zy-green-bg); }
+.zy-chip--amber { color: var(--zy-amber); background: var(--zy-amber-bg); }
+.zy-chip--red { color: var(--zy-red); background: var(--zy-red-bg); }
+.zy-chip--deep { color: var(--zy-red-deep); background: var(--zy-red-deep-bg); }
+.zy-chip--grey { color: var(--zy-grey); background: var(--zy-grey-bg); }
+.zy-chip--teal { color: var(--zy-teal); background: var(--zy-teal-bg); }
+.zy-chip--orange { color: var(--zy-orange); background: var(--zy-orange-bg); }
+
+/* 头像方块：颜色由内联 style 传入（原型每人一色） */
+.zy-avatar {
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+/* ---------- 按钮 ---------- */
+.zy-btn {
+  border: 1px solid var(--zy-input);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--zy-text);
+  cursor: pointer;
+}
+
+.zy-btn--primary {
+  border: none;
+  background: var(--zy-blue);
+  color: #fff;
+  font-weight: 700;
+}
+
+.zy-btn--sm {
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+}
+
+.zy-btn--block {
+  padding: 10px 0;
+  width: 100%;
+}
+
+.zy-btn--danger {
+  border: 1px solid var(--zy-red-line);
+  background: var(--zy-red-bg);
+  color: var(--zy-red);
+}
+
+.zy-btn--purple {
+  border: none;
+  background: var(--zy-purple);
+  color: #fff;
+  font-weight: 700;
+}
+
+.zy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.zy-icon-btn {
+  border: none;
+  background: var(--zy-bg);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  color: var(--zy-text-2);
+  font-family: inherit;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.zy-pill {
+  background: #fff;
+  border: 1px solid var(--zy-input);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--zy-text-2);
+  cursor: pointer;
+}
+
+.zy-pill[aria-pressed="true"] {
+  background: var(--zy-blue-bg);
+  border-color: var(--zy-blue-bg);
+  color: var(--zy-blue);
+  font-weight: 700;
+}
+
+/* ---------- 输入 ---------- */
+.zy-input,
+.zy-textarea,
+.zy-select {
+  border: 1px solid var(--zy-input);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--zy-text);
+  background: #fff;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.zy-input--search {
+  width: 240px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+.zy-textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.zy-field-label {
+  font-size: 12px;
+  color: var(--zy-text-2);
+  margin-bottom: 6px;
+}
+
+/* ---------- 表格（grid 行；列宽由页面 style 传入） ---------- */
+.zy-thead {
+  display: grid;
+  font-size: 11px;
+  color: var(--zy-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--zy-line-soft);
+}
+
+.zy-thead--pad {
+  padding: 14px 0 8px;
+}
+
+.zy-tr {
+  display: grid;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--zy-line-row);
+  font-size: 12.5px;
+}
+
+.zy-tr--13 {
+  font-size: 13px;
+}
+
+.zy-tr--11 {
+  padding: 11px 0;
+}
+
+.zy-tr--13p {
+  padding: 13px 0;
+}
+
+.zy-tr--clickable {
+  cursor: pointer;
+}
+
+.zy-kv {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 12.5px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--zy-line-row);
+}
+
+.zy-divider-top {
+  border-top: 1px solid var(--zy-line-soft);
+  padding-top: 12px;
+}
+
+/* ---------- 进度条 ---------- */
+.zy-track {
+  height: 6px;
+  background: var(--zy-line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.zy-track > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--zy-blue);
+}
+
+/* ---------- 开关 ---------- */
+.zy-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  background: var(--zy-input);
+  flex-shrink: 0;
+}
+
+.zy-switch[aria-checked="true"] {
+  background: var(--zy-green);
+}
+
+.zy-switch > i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 140ms;
+}
+
+.zy-switch[aria-checked="true"] > i {
+  left: 21px;
+}
+
+/* ---------- 抽屉 / 弹窗 ---------- */
+.zy-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 40, 0.35);
+  z-index: 40;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.zy-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 480px;
+  background: #fff;
+  z-index: 45;
+  box-shadow: -16px 0 48px rgba(20, 26, 40, 0.18);
+  padding: 28px;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.zy-drawer--470 {
+  width: 470px;
+}
+
+.zy-drawer--440 {
+  width: 440px;
+}
+
+.zy-modal-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 40, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.zy-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 520px;
+  padding: 28px;
+  box-shadow: 0 24px 64px rgba(20, 26, 40, 0.25);
+  box-sizing: content-box;
+}
+
+.zy-modal--540 {
+  width: 540px;
+}
+
+/* ---------- 空态 / 加载 / 错误（原型只有空态文案，其余沿用同一版式） ---------- */
+.zy-empty {
+  background: #fff;
+  border: 1px dashed var(--zy-input);
+  border-radius: 16px;
+  padding: 28px 22px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--zy-muted);
+}
+
+.zy-empty strong {
+  display: block;
+  color: var(--zy-text);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.zy-empty--error {
+  border-color: var(--zy-red-line);
+  background: var(--zy-red-bg);
+}
+
+.zy-empty--error strong {
+  color: var(--zy-red);
+}
+

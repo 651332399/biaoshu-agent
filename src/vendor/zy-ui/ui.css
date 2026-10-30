@@ -1,0 +1,367 @@
+/* ============================================================
+   智员组件库样式（@agent-platform/ui）
+   只使用 @agent-platform/design-tokens（zy.css）的 --zy-* token（含表面/阴影/遮罩）与 --ring，不写 hex/rgba；规范见平台仓库根 DESIGN.md。
+   在 zy.css 之后引入（平台在 main.tsx 中紧跟 design.css），页面私有 css 之前。
+   ============================================================ */
+
+/* ---------- 共用工具类（组件依赖，独立应用只引 zy.css + ui.css 也要生效） ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.zy-skeleton { width: 100%; }
+.zy-skeleton i { display: block; height: 12px; border-radius: 5px; background: linear-gradient(100deg, var(--zy-line-soft) 25%, var(--zy-shimmer) 45%, var(--zy-line-soft) 65%); background-size: 240% 100%; animation: zy-skeleton-shimmer 1.8s ease-in-out infinite; }
+.zy-skeleton-row { display: grid; grid-template-columns: 1.2fr 2fr 1fr; gap: 28px; padding: 20px 0; border-bottom: 1px solid var(--zy-line-soft); }
+.zy-skeleton-row:last-child { border: 0; }
+@keyframes zy-skeleton-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ---------- 按钮 ---------- */
+.zy-ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.zy-ui-btn[aria-busy="true"] { cursor: progress; }
+.zy-ui-btn-text {
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--zy-blue);
+  cursor: pointer;
+}
+.zy-ui-btn-text:hover:not(:disabled) { color: var(--zy-blue-dark); text-decoration: underline; }
+.zy-ui-btn-text:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- 输入态 ---------- */
+.zy-input[aria-invalid="true"],
+.zy-textarea[aria-invalid="true"],
+.zy-ui-trigger[aria-invalid="true"],
+.zy-ui-dropzone[aria-invalid="true"] { border-color: var(--zy-red); }
+
+/* ---------- 表单 ---------- */
+.zy-ui-field { display: flex; flex-direction: column; min-width: 0; }
+.zy-ui-field > .zy-field-label { margin-bottom: 6px; }
+.zy-ui-field--wide { grid-column: 1 / -1; }
+/* 必填星号用伪元素：不进入可访问名称，必填语义由控件的 required / aria-required 表达。 */
+.zy-ui-label--required::after { content: "*"; color: var(--zy-red); margin-left: 2px; }
+.zy-ui-field-hint,
+.zy-ui-field-error { margin-top: 4px; font-size: 11.5px; line-height: 1.5; color: var(--zy-muted); }
+.zy-ui-field-error { color: var(--zy-red); }
+.zy-ui-grid { display: grid; gap: 14px; }
+.zy-ui-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.zy-ui-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.zy-compact .zy-ui-grid { grid-template-columns: minmax(0, 1fr); }
+/* 没接 watchViewportWidth 的应用按视口兜底；钉钉折叠屏分栏 @media 不生效，仍需 watchViewportWidth。 */
+@media (max-width: 760px) { .zy-ui-grid { grid-template-columns: minmax(0, 1fr); } }
+.zy-ui-section + .zy-ui-section { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--zy-line-soft); }
+.zy-ui-section-head { margin-bottom: 12px; }
+.zy-ui-section-head h3 { margin: 0; font-size: 13.5px; font-weight: 900; color: var(--zy-text); }
+.zy-ui-section-head p { margin: 4px 0 0; font-size: 12px; color: var(--zy-muted); }
+.zy-ui-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.zy-ui-form-error { margin-top: 20px; padding: 12px; border-radius: 10px; background: var(--zy-red-bg); color: var(--zy-red); font-size: 12.5px; }
+
+/* ---------- 下拉触发器（Select / Combobox / MultiSelect） ---------- */
+.zy-ui-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--zy-input);
+  border-radius: 9px;
+  padding: 9px 10px 9px 12px;
+  min-height: 39px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--zy-text);
+  background: var(--zy-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.zy-ui-trigger > span:first-child,
+.zy-ui-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zy-ui-native-proxy { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+.zy-ui-trigger--sm { min-height: 33px; padding: 6px 8px 6px 10px; font-size: 12.5px; }
+.zy-ui-trigger:hover:not(:disabled) { border-color: var(--brand-border, var(--zy-blue)); }
+.zy-ui-trigger:focus-visible,
+.zy-ui-trigger[data-state="open"],
+.zy-ui-trigger[aria-expanded="true"] { outline: 0; border-color: var(--zy-blue); box-shadow: var(--ring); }
+.zy-ui-trigger[data-placeholder] { color: var(--zy-muted); }
+.zy-ui-trigger:disabled { background: var(--zy-bg); color: var(--zy-muted); cursor: not-allowed; }
+.zy-ui-trigger-icon { flex-shrink: 0; color: var(--zy-muted); display: inline-flex; }
+
+/* ---------- 浮层 ---------- */
+.zy-ui-popover {
+  z-index: 1000;
+  box-sizing: border-box;
+  min-width: max(var(--radix-select-trigger-width, 0px), var(--radix-popover-trigger-width, 0px), 160px);
+  max-height: min(360px, var(--radix-select-content-available-height, 360px), var(--radix-popover-content-available-height, 360px));
+  overflow: auto;
+  padding: 4px;
+  background: var(--zy-surface);
+  border: 1px solid var(--zy-line);
+  border-radius: 12px;
+  box-shadow: var(--zy-shadow-popover);
+  font-size: 13px;
+  color: var(--zy-text);
+}
+.zy-ui-search-list { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.zy-ui-search-list ul { margin: 0; padding: 4px; list-style: none; overflow: auto; }
+.zy-ui-search { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--zy-line-soft); color: var(--zy-muted); }
+.zy-ui-search input { flex: 1; min-width: 0; border: 0; padding: 2px 0; font: inherit; font-size: 13px; background: transparent; box-shadow: none; }
+.zy-ui-search input:focus { box-shadow: none; outline: 0; }
+.zy-ui-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 30px 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: 0;
+  user-select: none;
+}
+.zy-ui-option[data-highlighted] { background: var(--zy-blue-bg); color: var(--zy-blue-dark); }
+.zy-ui-option[data-state="checked"],
+.zy-ui-option[aria-selected="true"] { font-weight: 700; color: var(--zy-blue); }
+.zy-ui-option[data-disabled],
+.zy-ui-option[aria-disabled="true"] { color: var(--zy-muted-2); cursor: not-allowed; }
+.zy-ui-option--danger { color: var(--zy-red); }
+.zy-ui-option--danger[data-highlighted] { background: var(--zy-red-bg); color: var(--zy-red); }
+.zy-ui-option-check { position: absolute; right: 10px; display: inline-flex; color: var(--zy-blue); }
+.zy-ui-option-box {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 1px solid var(--zy-input);
+  border-radius: 4px;
+  background: var(--zy-surface);
+  color: var(--zy-surface);
+}
+.zy-ui-option-box[data-state="checked"] { background: var(--zy-blue); border-color: var(--zy-blue); }
+.zy-ui-list-empty { padding: 12px 10px; color: var(--zy-muted); font-size: 12.5px; }
+
+/* ---------- 复选 / 开关 / 单选 ---------- */
+.zy-ui-choice { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--zy-text); cursor: pointer; line-height: 1.4; }
+.zy-ui-choice.is-disabled { color: var(--zy-muted); cursor: not-allowed; }
+.zy-ui-checkbox,
+.zy-ui-radio {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--zy-input);
+  background: var(--zy-surface);
+  cursor: pointer;
+  transition: background-color 140ms, border-color 140ms;
+}
+.zy-ui-checkbox { border-radius: 4px; color: var(--zy-surface); }
+.zy-ui-radio { border-radius: 999px; }
+.zy-ui-checkbox:hover:not(:disabled),
+.zy-ui-radio:hover:not(:disabled) { border-color: var(--zy-blue); }
+.zy-ui-checkbox[data-state="checked"],
+.zy-ui-checkbox[data-state="indeterminate"] { background: var(--zy-blue); border-color: var(--zy-blue); }
+.zy-ui-radio[data-state="checked"] { border-color: var(--zy-blue); }
+.zy-ui-radio-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--zy-blue); }
+.zy-ui-checkbox-mark { display: inline-flex; }
+.zy-ui-checkbox:focus-visible,
+.zy-ui-radio:focus-visible,
+.zy-ui-switch:focus-visible { outline: 2px solid var(--zy-blue); outline-offset: 2px; }
+.zy-ui-checkbox[aria-invalid="true"],
+.zy-ui-radio-group[aria-invalid="true"] .zy-ui-radio { border-color: var(--zy-red); }
+.zy-ui-checkbox:disabled,
+.zy-ui-radio:disabled { background: var(--zy-bg); border-color: var(--zy-line); cursor: not-allowed; }
+.zy-ui-checkbox:disabled[data-state="checked"] { background: var(--zy-muted-2); border-color: var(--zy-muted-2); }
+.zy-ui-radio-group { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.zy-ui-radio-group--vertical { flex-direction: column; }
+.zy-ui-switch {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--zy-input);
+  cursor: pointer;
+  transition: background-color 140ms;
+}
+.zy-ui-switch[data-state="checked"] { background: var(--zy-green); }
+.zy-ui-switch:disabled { opacity: 0.4; cursor: not-allowed; }
+.zy-ui-switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--zy-surface);
+  transform: translateX(3px);
+  transition: transform 140ms;
+}
+.zy-ui-switch-thumb[data-state="checked"] { transform: translateX(21px); }
+
+/* ---------- 文件上传 ---------- */
+.zy-ui-upload { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.zy-ui-dropzone {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--zy-input);
+  border-radius: 12px;
+  background: var(--zy-bg);
+  color: var(--zy-text-2);
+  font-size: 12.5px;
+  transition: border-color 140ms, background-color 140ms;
+}
+.zy-ui-dropzone[data-dragging] { border-color: var(--zy-blue); background: var(--zy-blue-bg); }
+.zy-ui-dropzone[data-disabled] { opacity: 0.6; }
+.zy-ui-dropzone-hint { flex-basis: 100%; font-size: 11.5px; color: var(--zy-muted); }
+.zy-ui-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--zy-line);
+  border-radius: 9px;
+  background: var(--zy-surface);
+  font-size: 12.5px;
+  color: var(--zy-text-2);
+}
+.zy-ui-file-thumb { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+.zy-ui-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--zy-text); }
+.zy-ui-file-size { font-variant-numeric: tabular-nums; color: var(--zy-muted); }
+.zy-ui-icon-action {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--zy-text-2);
+  cursor: pointer;
+}
+.zy-ui-icon-action:hover:not(:disabled) { background: var(--zy-bg); color: var(--zy-text); }
+.zy-ui-icon-action:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- 对话框 ---------- */
+.zy-ui-overlay { position: fixed; inset: 0; z-index: 900; background: var(--zy-scrim); }
+.zy-ui-dialog {
+  position: fixed;
+  z-index: 901;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px 24px;
+  border-radius: 20px;
+  background: var(--zy-surface);
+  box-shadow: var(--zy-shadow-dialog);
+}
+.zy-ui-dialog--lg { width: min(720px, calc(100vw - 32px)); }
+.zy-ui-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.zy-ui-dialog-title { margin: 0; font-size: 15px; font-weight: 900; }
+.zy-ui-dialog-desc { margin: 6px 0 0; font-size: 12.5px; color: var(--zy-text-2); }
+.zy-ui-dialog-body { margin-top: 16px; font-size: 13px; }
+.zy-ui-dialog-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* ---------- 提示 / 菜单 / 分栏 ---------- */
+.zy-ui-menu { min-width: 140px; }
+.zy-ui-menu .zy-ui-option { padding-right: 12px; }
+.zy-ui-tooltip {
+  z-index: 1100;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--zy-text);
+  color: var(--zy-surface);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.zy-ui-tab-list { display: flex; gap: 4px; border-bottom: 1px solid var(--zy-line); }
+.zy-ui-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 9px 12px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--zy-text-2);
+  cursor: pointer;
+}
+.zy-ui-tab:hover:not(:disabled) { color: var(--zy-text); }
+.zy-ui-tab[data-state="active"] { color: var(--zy-blue); border-bottom-color: var(--zy-blue); font-weight: 700; }
+.zy-ui-tab:disabled { color: var(--zy-muted-2); cursor: not-allowed; }
+.zy-ui-tab-panel { padding-top: 16px; }
+.zy-ui-tab-panel:focus-visible { outline: 2px solid var(--zy-blue); outline-offset: 2px; }
+
+/* ---------- 通知 ---------- */
+.zy-ui-toast-viewport {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 40px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: 0;
+}
+.zy-ui-toast {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--zy-line);
+  border-radius: 12px;
+  background: var(--zy-surface);
+  box-shadow: var(--zy-shadow-popover);
+}
+.zy-ui-toast .zy-ui-icon-action { grid-column: 2; grid-row: 1; }
+.zy-ui-toast-title { font-size: 13px; font-weight: 700; color: var(--zy-text); }
+.zy-ui-toast-desc { grid-column: 1; font-size: 12.5px; color: var(--zy-text-2); }
+.zy-ui-toast--success .zy-ui-toast-title { color: var(--zy-green-dark); }
+.zy-ui-toast--error { border-color: var(--zy-red-line); background: var(--zy-red-bg); }
+.zy-ui-toast--error .zy-ui-toast-title { color: var(--zy-red); }
+
+/* ---------- 表格 ---------- */
+.zy-ui-cell--end { text-align: right; justify-self: end; font-variant-numeric: tabular-nums; }
+.zy-ui-table-empty { margin-top: 12px; }
+.zy-ui-pager { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding-top: 12px; font-size: 12px; color: var(--zy-muted); }
+.zy-ui-pager-info { margin-right: 6px; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zy-ui-trigger, .zy-ui-checkbox, .zy-ui-radio, .zy-ui-switch, .zy-ui-switch-thumb, .zy-ui-dropzone { transition: none; }
+  .spin, .zy-skeleton i { animation: none; }
+}
+
+/* 表单内的勾选组、同组第二个栅格 */
+.zy-ui-checks { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.zy-ui-grid--after { margin-top: 14px; }
+.zy-h2 + .zy-ui-section { margin-top: 14px; }

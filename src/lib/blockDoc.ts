@@ -165,7 +165,7 @@ function textContent(text: string, highlighted = false, chips: EvidenceChipData[
 
 /** 把一行文本按命中的证据芯片子串切分,子串套 evidenceChip mark,其余保持普通文本。 */
 function lineToTextNodes(line: string, highlighted: boolean, chips: EvidenceChipData[]): JSONContent[] {
-  const highlightMark = highlighted ? { type: 'highlight', attrs: { color: '#fef3c7' } } : null;
+  const highlightMark = highlighted ? { type: 'highlight', attrs: { color: 'var(--zy-amber-bg)' } } : null;
   const plain = (segment: string): JSONContent => ({
     type: 'text',
     text: segment,

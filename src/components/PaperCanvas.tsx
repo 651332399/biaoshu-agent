@@ -305,8 +305,8 @@ export function PaperCanvas({
   };
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#e9eef5]">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-[#f7f9fc] px-6 text-xs text-slate-600">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--zy-bg)]">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-[var(--zy-surface)] px-6 text-xs text-slate-600">
         <div className="truncate">
           <span className="font-medium">{fileName}</span>
           <span className="px-2 text-slate-300">·</span>
@@ -349,7 +349,7 @@ export function PaperCanvas({
 
       <div className="flex-1 overflow-auto px-6 py-8">
         <div
-          className="mx-auto min-h-[1123px] w-[794px] origin-top rounded-sm bg-white px-[58px] py-[54px] shadow-[0_20px_80px_rgba(15,23,42,0.15)]"
+          className="mx-auto min-h-[1123px] w-[794px] origin-top rounded-sm bg-white px-[58px] py-[54px] shadow-lg"
           style={{ transform: `scale(${zoom})`, marginBottom: `${(zoom - 1) * 1123}px` }}
         >
           {displayBlocks.length === 0 ? (

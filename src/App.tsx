@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useEngine } from './hooks/useEngine';
 import { TopBar } from './components/TopBar';
+import { AppTopbar } from './components/AppTopbar';
 import { GlobalNav, type AppView } from './components/GlobalNav';
 import { EditorWorkspace } from './components/editor/EditorWorkspace';
 import { MaterialsLibrary } from './components/library/MaterialsLibrary';
@@ -38,30 +39,33 @@ export default function App() {
   }, [engine]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--canvas)] text-[var(--text)] font-sans antialiased">
-      <GlobalNav view={view} onNavigate={setView} />
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--canvas)] text-[var(--text)] font-sans antialiased">
+      <AppTopbar />
+      <div className="flex flex-1 overflow-hidden">
+        <GlobalNav view={view} onNavigate={setView} />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {view === 'editor' && hasStarted && (
-          <TopBar state={state} 项目名={scenario.meta.项目名} />
-        )}
-
-        <main className="flex flex-1 overflow-hidden">
-          {view === 'library' ? (
-            <MaterialsLibrary materials={scenario.materials} matched={state.matchedMaterials} />
-          ) : view === 'projects' ? (
-            <ProjectsList onNew={() => { setHasStarted(false); setView('editor'); }} onOpen={handleOpenProject} />
-          ) : !hasStarted ? (
-            <UploadIntro onStart={handleStartWorkspace} onOpenProject={handleOpenProject} />
-          ) : (
-            <EditorWorkspace
-              state={state}
-              scenario={scenario}
-              engine={engine}
-              onOpenLibrary={() => setView('library')}
-            />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {view === 'editor' && hasStarted && (
+            <TopBar state={state} 项目名={scenario.meta.项目名} />
           )}
-        </main>
+
+          <main className="flex flex-1 overflow-hidden">
+            {view === 'library' ? (
+              <MaterialsLibrary materials={scenario.materials} matched={state.matchedMaterials} />
+            ) : view === 'projects' ? (
+              <ProjectsList onNew={() => { setHasStarted(false); setView('editor'); }} onOpen={handleOpenProject} />
+            ) : !hasStarted ? (
+              <UploadIntro onStart={handleStartWorkspace} onOpenProject={handleOpenProject} />
+            ) : (
+              <EditorWorkspace
+                state={state}
+                scenario={scenario}
+                engine={engine}
+                onOpenLibrary={() => setView('library')}
+              />
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

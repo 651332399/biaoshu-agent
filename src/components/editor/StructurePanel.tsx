@@ -18,7 +18,7 @@ const CAT_STYLE: Record<string, string> = {
   废标: 'text-[var(--bad)]',
   资质: 'text-blue-600',
   评分: 'text-emerald-600',
-  技术参数: 'text-indigo-600',
+  技术参数: 'text-violet-600',
   商务条款: 'text-amber-600',
   格式: 'text-gray-500',
 };
