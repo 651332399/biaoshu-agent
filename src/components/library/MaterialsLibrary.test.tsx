@@ -51,6 +51,19 @@ describe('MaterialsLibrary (backend-connected)', () => {
     expect(meta).not.toHaveProperty('id');
   });
 
+  test('upload form uses the shared form components with visible labels', async () => {
+    render(<MaterialsLibrary materials={[]} matched={[]} />);
+    await screen.findByText('CMA 资质证书');
+    fireEvent.click(screen.getByText('＋ 上传资料'));
+    for (const label of ['素材名称', '关键词']) {
+      const input = screen.getByLabelText(label);
+      expect(input).toHaveClass('zy-input');
+      expect(input).not.toHaveClass('outline-none');
+      expect(document.querySelector(`label[for="${input.id}"]`)).toHaveTextContent(label);
+    }
+    expect(screen.getByRole('button', { name: '提交' })).toHaveClass('zy-btn--primary');
+  });
+
   test('upload rejects empty name without calling backend', async () => {
     render(<MaterialsLibrary materials={[]} matched={[]} />);
     await screen.findByText('CMA 资质证书');

@@ -34,14 +34,22 @@ function usePlatformAccount() {
   return account;
 }
 
-/** 平台登出需要 CSRF token，按需签发后提交，最后回到平台登录页。 */
-async function logout() {
+/** 平台登出需要 CSRF token，按需签发后提交。只有确认已退出（或会话本就失效，401）才回到平台登录页；其他失败返回 false，留在原页面可重试。 */
+async function logout(): Promise<boolean> {
   try {
     const me = await fetch('/api/auth/me', { credentials: 'same-origin', headers: { 'X-CSRF-Issue': '1' } });
-    const csrf = me.ok ? ((await me.json()) as { csrfToken?: string }).csrfToken : undefined;
-    if (csrf) await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf } });
-  } finally {
-    (window.top ?? window).location.href = '/login';
+    let done = me.status === 401;
+    if (me.ok) {
+      const { csrfToken } = (await me.json()) as { csrfToken?: string };
+      if (csrfToken) {
+        const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrfToken } });
+        done = response.ok || response.status === 401;
+      }
+    }
+    if (done) (window.top ?? window).location.href = '/login';
+    return done;
+  } catch {
+    return false;
   }
 }
 
@@ -49,6 +57,7 @@ async function logout() {
 export function AppTopbar() {
   const embedded = isEmbedded();
   const account = usePlatformAccount();
+  const [logoutFailed, setLogoutFailed] = useState(false);
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--zy-line)] bg-[var(--zy-surface)] px-6 z-30">
       <div className="flex items-center gap-3">
@@ -65,6 +74,11 @@ export function AppTopbar() {
           <a className="text-[13px] font-medium text-[var(--zy-blue)] hover:text-[var(--zy-blue-dark)]" href={PLATFORM_URL} target="_top">
             返回智员平台
           </a>
+        )}
+        {logoutFailed && (
+          <span role="alert" className="text-[13px] text-[var(--zy-red)]">
+            退出失败，请重试
+          </span>
         )}
         {account && (
           <DropdownMenu
@@ -86,7 +100,7 @@ export function AppTopbar() {
             }
             items={[
               ...(account.tenantName ? [{ label: account.tenantName, disabled: true, onSelect: () => {} }] : []),
-              { label: '退出登录', onSelect: () => void logout() },
+              { label: '退出登录', onSelect: () => void logout().then((done) => setLogoutFailed(!done)) },
             ]}
           />
         )}

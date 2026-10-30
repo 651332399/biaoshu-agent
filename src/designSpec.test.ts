@@ -23,6 +23,11 @@ describe('智员员工应用规范', () => {
     expect(offenders.map((path) => relative(ROOT, path))).toEqual([]);
   });
 
+  test('no outline-none that removes the focus indicator', () => {
+    const offenders = sources(ROOT).filter((path) => /(?<!focus:)\boutline-none\b/.test(readFileSync(path, 'utf8')));
+    expect(offenders.map((path) => relative(ROOT, path))).toEqual([]);
+  });
+
   test('no hex or rgb colors outside the token stylesheet', () => {
     const offenders = sources(ROOT).filter((path) => /#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(readFileSync(path, 'utf8')));
     expect(offenders.map((path) => relative(ROOT, path))).toEqual([]);

@@ -3,7 +3,7 @@ import { Ban, ClipboardList, FlaskConical, Paperclip, ScrollText, Search, Trophy
 import type { Material, MaterialCategory } from '../../engine/demo/types';
 import type { BackendMaterial } from '../../engine/types';
 import { listMaterials, uploadMaterial, deleteMaterial, ApiError } from '../../lib/api';
-import { FileUpload, Select } from '../../vendor/zy-ui';
+import { Button, FileUpload, FormField, FormGrid, Input, Select } from '../../vendor/zy-ui';
 
 interface Props {
   materials: Material[];
@@ -101,13 +101,14 @@ export function MaterialsLibrary({ materials }: Props) {
         </header>
 
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <div className="flex-1 min-w-[220px] flex items-center gap-2 rounded-lg border border-[var(--zy-input)] bg-white px-3 py-2">
+          <div className="flex-1 min-w-[220px] flex items-center gap-2 rounded-lg border border-[var(--zy-input)] bg-white px-3 py-2 focus-within:border-[var(--zy-blue)] focus-within:shadow-[var(--ring)]">
             <Search aria-hidden="true" size={14} className="text-[var(--zy-muted)]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜索资质 / 人员 / 业绩…"
-              className="flex-1 text-[13px] outline-none bg-transparent"
+              aria-label="搜索资料"
+              className="flex-1 text-[13px] focus:outline-none bg-transparent"
             />
           </div>
           <button
@@ -262,45 +263,33 @@ function UploadForm({
 
   return (
     <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-      <div className="flex flex-wrap gap-3">
-        <Select
-          value={category}
-          onValueChange={(next) => setCategory(next as MaterialCategory)}
-          options={CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
-          aria-label="素材分类"
-          className="w-32"
-        />
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="素材名称(如 CMA 资质证书)"
-          aria-label="素材名称"
-          className="flex-1 min-w-[200px] rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
-        />
-      </div>
-      <input
-        value={keywords}
-        onChange={(e) => setKeywords(e.target.value)}
-        placeholder="关键词,逗号分隔(供召回匹配)"
-        aria-label="关键词"
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none"
-      />
-      <div className="flex items-end gap-3">
-        <FileUpload
-          value={file}
-          onFiles={(files) => setFile(files[0] ?? null)}
-          accept=".jpg,.jpeg,.png,.pdf"
-          hint="JPG / PNG / PDF"
-          aria-label="证照/图片文件"
-          className="flex-1"
-        />
-        <button
-          onClick={submit}
-          disabled={busy}
-          className="ml-auto px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40"
-        >
+      <FormGrid columns={2}>
+        <FormField label="素材分类">
+          <Select
+            value={category}
+            onValueChange={(next) => setCategory(next as MaterialCategory)}
+            options={CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
+          />
+        </FormField>
+        <FormField label="素材名称" required>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如 CMA 资质证书" />
+        </FormField>
+        <FormField label="关键词" hint="逗号分隔，供召回匹配" wide>
+          <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="如 CMA, 计量" />
+        </FormField>
+        <FormField label="证照/图片文件" wide>
+          <FileUpload
+            value={file}
+            onFiles={(files) => setFile(files[0] ?? null)}
+            accept=".jpg,.jpeg,.png,.pdf"
+            hint="JPG / PNG / PDF"
+          />
+        </FormField>
+      </FormGrid>
+      <div className="flex justify-end">
+        <Button variant="primary" onClick={submit} loading={busy}>
           {busy ? '上传中…' : '提交'}
-        </button>
+        </Button>
       </div>
     </div>
   );

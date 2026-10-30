@@ -155,7 +155,7 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="和 Copilot 对话或补充资料…"
-            className="flex-1 text-xs outline-none bg-transparent"
+            className="flex-1 text-xs focus:outline-none bg-transparent"
           />
           <button onClick={send} className="text-[var(--accent)] font-bold text-sm hover:opacity-80 cursor-pointer">
             {state.chat.sending ? '…' : '➤'}

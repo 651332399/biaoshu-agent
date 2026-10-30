@@ -265,3 +265,11 @@ button {
   border-bottom: 1px solid var(--zy-amber);
   padding: 0 1px;
 }
+
+/* 文本输入焦点环（与 Select 触发器 .zy-ui-trigger 一致；平台在 apps/web 全局样式里给出，zy.css 未包含） */
+.zy-input:focus-visible,
+.zy-textarea:focus-visible {
+  outline: 0;
+  border-color: var(--zy-blue);
+  box-shadow: var(--ring);
+}
