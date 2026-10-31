@@ -555,6 +555,8 @@ export class LiveSource implements WorkspaceEngine {
     } else if (name === 'node_started') {
       this.state.activeStage = Number(data.stage_index ?? this.state.activeStage);
       this.state.status = 'playing';
+      // 确认点已被应答才会有新节点启动；事件回放时这里是唯一清卡的机会。
+      if (this.state.pendingCard?.kind === 'checkpoint') this.state.pendingCard = null;
       this.state.error = null;
       this.state.logs = this.state.logs.filter((log) => !log.id.startsWith('err-') && !log.id.startsWith('client-err-'));
     } else if (name === 'node_progress') {

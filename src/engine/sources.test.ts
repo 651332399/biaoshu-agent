@@ -283,6 +283,18 @@ describe('LiveSource', () => {
     expect(source.getState().logs.at(-1)?.text).toContain('RuntimeError');
   });
 
+  test('replaying a confirmed checkpoint then a failed export does not stay stuck on the checkpoint', async () => {
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('confirm_request', message({ checkpoint: 3, artifact_url: '/report.json' }, '1'));
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '2'));
+    await source.handleEvent('run_failed', message({ node: 'export', error_type: 'RuntimeError', message: '交付被阻断' }, '3'));
+
+    expect(source.getState().pendingCard).toBeNull();
+    expect(source.getState().activeStage).toBe(9);
+    expect(source.getState().status).toBe('paused');
+    expect(source.getState().error).toContain('交付被阻断');
+  });
+
   test('a later node start clears a historical failure and progress stays current', async () => {
     const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
     await source.handleEvent('run_failed', message({ node: 'generate', error_type: 'ValidationError', message: 'legacy id' }, '2'));
