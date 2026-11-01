@@ -314,6 +314,22 @@ describe('LiveSource', () => {
     expect(source.getState().error).not.toContain('/app/.projects');
   });
 
+  test('a stale failed report resolving after a re-export restarted compliance does not pause the run', async () => {
+    let resolveReport: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { resolveReport = resolve; })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    const pending = source.handleEvent('artifact_ready', message({ node: 'export', artifact_type: 'style_check_report', url: '/r.json' }, '2'));
+    await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '3'));
+    resolveReport(new Response(JSON.stringify({ server_precheck_passed: false }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    await pending;
+
+    expect(source.getState().status).toBe('playing');
+    expect(source.getState().error).toBeNull();
+  });
+
   test('an unreadable precheck report still ends the running state', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('missing', { status: 404 })));
     const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);

@@ -652,7 +652,8 @@ export class LiveSource implements WorkspaceEngine {
     } catch {
       report = { server_precheck_passed: false };
     }
-    if (report.server_precheck_passed !== false) return;
+    // 事件重放时请求可能晚于后续事件返回：导出节点已不是当前阶段，这份报告就过期了。
+    if (report.server_precheck_passed !== false || this.state.activeStage < 9) return;
     this.state.error = `服务器预检未通过，交付被阻断：${precheckFailureSummary(report)}`;
     this.state.status = 'paused';
   }
