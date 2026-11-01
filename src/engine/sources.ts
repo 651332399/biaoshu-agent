@@ -9,6 +9,7 @@ import {
   regenerateProjectExport,
   rejectChatProposal,
   runProject,
+  subscribeGenerationAcceptance,
   sendProjectChat,
   uploadMaterial,
   uploadProject,
@@ -215,6 +216,8 @@ function precheckFailureSummary(report: PrecheckReport): string {
   return messages.length > 3 ? `${shown}（共 ${messages.length} 项）` : shown;
 }
 
+const REGENERATION_FAILED = '重新导出未完成，可稍后重试；如有具体原因会显示在右侧 Copilot。';
+
 export class LiveSource implements WorkspaceEngine {
   private state = liveInitialState();
   private listeners = new Set<(s: EngineState) => void>();
@@ -229,6 +232,8 @@ export class LiveSource implements WorkspaceEngine {
   private regenerationRun: object | null = null;
   // POST /export 抛异常时引擎不发任何终态事件，这一轮的开始事件不能再把页面带回转圈。
   private exportFailed = false;
+  // 刷新后的页面没有 POST 可等，只能靠 generation 验收事件得知这一轮失败。
+  private stopGenerationWatch: (() => void) | null = null;
 
   constructor(
     private scenario: Scenario,
@@ -261,6 +266,7 @@ export class LiveSource implements WorkspaceEngine {
     this.exportRound += 1;
     this.regenerationRun = null;
     this.exportFailed = false;
+    this.unwatchGeneration();
     this.scenario.volumes = [];
     this.scenario.blocks = [];
     this.scenario.redlines = [];
@@ -341,12 +347,49 @@ export class LiveSource implements WorkspaceEngine {
         this.state.status = 'awaiting';
       }
       this.exportFailed = remoteState.generation_status === 'server_precheck_failed' && !remoteState.awaiting_checkpoint;
+      if (remoteState.generation_status === 'generation_started' && remoteState.generation_id && !remoteState.awaiting_checkpoint) {
+        this.watchGeneration(projectId, remoteState.generation_id);
+      }
       this.connectEvents();
       this.connectChatEvents();
       await this.loadChatHistory();
       this.emit();
     } catch (error) {
       this.reportFailure('从后端恢复项目失败', error);
+    }
+  }
+
+  private unwatchGeneration() {
+    this.stopGenerationWatch?.();
+    this.stopGenerationWatch = null;
+  }
+
+  private watchGeneration(projectId: string, generationId: string) {
+    this.unwatchGeneration();
+    this.stopGenerationWatch = subscribeGenerationAcceptance(projectId, generationId, (event) => {
+      if (event.event === 'superseded') {
+        this.unwatchGeneration();
+        void this.watchCurrentGeneration(projectId);
+      } else if (event.event === 'awaiting_wps_acceptance') {
+        this.unwatchGeneration();
+      } else if (event.event === 'server_precheck_failed') {
+        this.unwatchGeneration();
+        this.settleRegeneration(REGENERATION_FAILED);
+      }
+    });
+  }
+
+  private async watchCurrentGeneration(projectId: string) {
+    try {
+      const remoteState = await getProjectState(projectId);
+      if (this.projectId !== projectId || this.regenerationRun) return;
+      if (remoteState.generation_status === 'server_precheck_failed') {
+        this.settleRegeneration(REGENERATION_FAILED);
+      } else if (remoteState.generation_status === 'generation_started' && remoteState.generation_id) {
+        this.watchGeneration(projectId, remoteState.generation_id);
+      }
+    } catch (error) {
+      if (this.projectId === projectId) this.reportFailure('读取项目状态失败', error);
     }
   }
 
@@ -669,8 +712,12 @@ export class LiveSource implements WorkspaceEngine {
     this.regenerationRun = run;
     this.exportRound += 1;
     this.exportFailed = false;
-    const revision = this.state.exportRegeneration?.revision ?? 0;
-    this.state.exportRegeneration = { running: true, revision, error: null };
+    this.unwatchGeneration();
+    this.state.exportRegeneration = {
+      running: true,
+      revision: this.state.exportRegeneration?.revision ?? 0,
+      error: null,
+    };
     this.state.status = 'playing';
     this.state.error = null;
     this.emit();
@@ -681,10 +728,15 @@ export class LiveSource implements WorkspaceEngine {
       // 预检被拦时接口只回 500，具体原因由预检报告事件写到 state.error。
       failure = reason instanceof ApiError && reason.status >= 400 && reason.status < 500
         ? reason.message
-        : '重新导出未完成，可稍后重试；如有具体原因会显示在右侧 Copilot。';
+        : REGENERATION_FAILED;
     }
     if (this.regenerationRun !== run) return;
     this.regenerationRun = null;
+    this.settleRegeneration(failure);
+  }
+
+  private settleRegeneration(failure: string | null) {
+    const revision = this.state.exportRegeneration?.revision ?? 0;
     this.state.exportRegeneration = { running: false, revision: revision + 1, error: failure };
     this.exportFailed = failure !== null;
     if (failure && this.state.activeStage === 8) this.state.activeStage = 9;

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { LiveSource, makeLiveScenario } from './sources';
 
 function message(data: unknown, id: string) {
@@ -376,6 +376,85 @@ describe('LiveSource', () => {
     }));
     await running;
     expect(source.getState().status).toBe('idle');
+  });
+
+  describe('reload during a re-export', () => {
+    class FakeStream {
+      static all: FakeStream[] = [];
+      listeners = new Map<string, (event: MessageEvent<string>) => void>();
+      closed = false;
+      constructor(public url: string) { FakeStream.all.push(this); }
+      addEventListener(name: string, fn: (event: MessageEvent<string>) => void) { this.listeners.set(name, fn); }
+      close() { this.closed = true; }
+      send(name: string, id: number) {
+        this.listeners.get(name)?.({ data: '{}', lastEventId: String(id) } as MessageEvent<string>);
+      }
+    }
+    const acceptanceStream = (generation: string) => FakeStream.all.find(
+      (stream) => stream.url.includes(`/generations/${generation}/acceptance/events`),
+    );
+    let remote: { generation_id: string; generation_status: string };
+    const restore = async () => {
+      vi.stubGlobal('EventSource', FakeStream);
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+        project_id: 'p1', completed_nodes: [], current_node: 'compliance', awaiting_checkpoint: null,
+        awaiting_escalation: null, artifacts: [], server_precheck_passed: false, final_delivery_approved: false,
+        ...remote,
+      }), { status: 200, headers: { 'content-type': 'application/json' } })));
+      const source = new LiveSource(makeLiveScenario(), (url) => new FakeStream(url) as unknown as EventSource);
+      await source.restoreProject('p1');
+      return source;
+    };
+
+    beforeEach(() => {
+      FakeStream.all = [];
+      remote = { generation_id: 'g2', generation_status: 'generation_started' };
+    });
+
+    test('a failure replayed before the pipeline replay does not spin afterwards', async () => {
+      const source = await restore();
+      acceptanceStream('g2')!.send('server_precheck_failed', 5);
+      await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '20'));
+
+      expect(source.getState().status).toBe('idle');
+      expect(source.getState().activeStage).toBe(9);
+      expect(acceptanceStream('g2')!.closed).toBe(true);
+    });
+
+    test('follows a newer generation when the watched one is superseded', async () => {
+      const source = await restore();
+      await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '20'));
+      remote = { generation_id: 'g3', generation_status: 'generation_started' };
+      acceptanceStream('g2')!.send('superseded', 6);
+      await vi.waitFor(() => expect(acceptanceStream('g3')).toBeDefined());
+
+      expect(acceptanceStream('g2')!.closed).toBe(true);
+      acceptanceStream('g3')!.send('server_precheck_failed', 1);
+      expect(source.getState().status).toBe('paused');
+      expect(source.getState().exportRegeneration?.error).toContain('重新导出未完成');
+    });
+
+    test('a passing generation stops the watch without reporting failure', async () => {
+      const source = await restore();
+      acceptanceStream('g2')!.send('awaiting_wps_acceptance', 7);
+
+      expect(acceptanceStream('g2')!.closed).toBe(true);
+      expect(source.getState().exportRegeneration ?? null).toBeNull();
+    });
+
+    test('switching project closes the watch', async () => {
+      const source = await restore();
+      source.reset();
+
+      expect(acceptanceStream('g2')!.closed).toBe(true);
+    });
+
+    test('does not watch a generation that has already ended', async () => {
+      remote = { generation_id: 'g2', generation_status: 'awaiting_wps_acceptance' };
+      await restore();
+
+      expect(acceptanceStream('g2')).toBeUndefined();
+    });
   });
 
   test('a replayed compliance start of an already failed generation does not spin after a reload', async () => {
