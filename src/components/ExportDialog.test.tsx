@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { BackendExportPlan } from '../engine/types';
-import type { Scenario } from '../engine/demo/types';
+import type { DocBlockData, Scenario } from '../engine/demo/types';
+import { LiveSource } from '../engine/sources';
 import { ExportDialog } from './ExportDialog';
 import { setApiBase } from '../lib/apiBase';
 
@@ -69,9 +71,9 @@ function makeExportPlan(): BackendExportPlan {
 }
 
 
-function jsonResponse(body: unknown) {
+function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status: 200,
+    status,
     headers: { 'content-type': 'application/json' },
   });
 }
@@ -174,6 +176,102 @@ describe('ExportDialog WPS acceptance', () => {
 
     expect(await screen.findByText(label)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /下载/ })).not.toBeInTheDocument();
+  });
+
+  const BLOCKS = [{ id: 'b1', chapterId: 'c1', render: 'prose', prose: '正文' }] as unknown as DocBlockData[];
+
+  function stubRegenerate(fetchMock: ReturnType<typeof stubGeneration>, response: () => Response) {
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (request: RequestInfo | URL, init?: RequestInit) => (
+      String(request).endsWith('/export') ? response() : original(request, init)
+    ));
+  }
+
+  function renderWithEngine(props: { blocks: DocBlockData[]; dirtyBlockIds?: string[] }) {
+    const source = new LiveSource(makeScenario());
+    function Harness() {
+      const [state, setState] = useState(source.getState());
+      useEffect(() => {
+        const unsubscribe = source.subscribe(setState);
+        return () => { unsubscribe(); };
+      }, []);
+      return (
+        <ExportDialog
+          scenario={makeScenario()}
+          backendExportPlan={makeExportPlan()}
+          engine={source}
+          regeneration={state.exportRegeneration}
+          {...props}
+        />
+      );
+    }
+    render(<Harness />);
+  }
+
+  function exportCalls(fetchMock: ReturnType<typeof stubGeneration>) {
+    return fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/export'));
+  }
+
+  test('a failed precheck can re-export the current blocks and then rebinds the generation', async () => {
+    const fetchMock = stubGeneration('server_precheck_failed');
+    stubRegenerate(fetchMock, () => jsonResponse({ status: 'exported', url: '/x' }));
+    renderWithEngine({ blocks: BLOCKS, dirtyBlockIds: ['b1'] });
+
+    fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
+
+    await waitFor(() => expect(exportCalls(fetchMock)).toHaveLength(1));
+    const [, init] = exportCalls(fetchMock)[0];
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({ blocks: BLOCKS, dirty_block_ids: ['b1'] });
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/state')).length).toBe(2);
+    });
+  });
+
+  test('re-export is unavailable until the document blocks have loaded', async () => {
+    const fetchMock = stubGeneration('server_precheck_failed');
+    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} blocks={[]} />);
+
+    const button = await screen.findByRole('button', { name: /重新导出/ });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(exportCalls(fetchMock)).toHaveLength(0);
+  });
+
+  test('a server error on re-export shows guidance instead of the raw 500 text', async () => {
+    const fetchMock = stubGeneration('server_precheck_failed');
+    stubRegenerate(fetchMock, () => new Response('Internal Server Error', { status: 500 }));
+    renderWithEngine({ blocks: BLOCKS });
+
+    fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('重新导出未完成');
+    expect(screen.queryByText(/Internal Server Error/)).not.toBeInTheDocument();
+  });
+
+  test('a rejected re-export shows the reason from the API', async () => {
+    const fetchMock = stubGeneration('server_precheck_failed');
+    stubRegenerate(fetchMock, () => jsonResponse({ detail: '项目尚未生成正文，不能重新导出' }, 409));
+    renderWithEngine({ blocks: BLOCKS });
+
+    fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('项目尚未生成正文');
+  });
+
+  test.each(['generation_started', 'awaiting_wps_acceptance'] as const)('%s offers no re-export', async (status) => {
+    stubGeneration(status);
+    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} blocks={BLOCKS} />);
+
+    await screen.findByText(status === 'generation_started' ? '正在生成新版本' : '待 WPS 验收');
+    expect(screen.queryByRole('button', { name: /重新导出/ })).not.toBeInTheDocument();
+  });
+
+  test('long validation issues wrap inside their card', async () => {
+    stubGeneration('server_precheck_failed', { issues: [{ code: 'x', message: 'y'.repeat(300) }] });
+    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} />);
+
+    expect(await screen.findByText('y'.repeat(300))).toHaveClass('break-words');
   });
 
   test('awaiting generation exposes only precheck package and per-volume evidence slots', async () => {

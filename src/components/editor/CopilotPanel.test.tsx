@@ -117,6 +117,14 @@ describe('CopilotPanel', () => {
     expect(screen.getByText('合规校验进行中')).toBeInTheDocument();
   });
 
+  test('a long error wraps inside its card', () => {
+    const message = `RuntimeError: /app/.projects/${'a'.repeat(120)}`;
+    const state = makeState({ error: message });
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={makeEngine()} phase="export" onOpenLibrary={vi.fn()} />);
+
+    expect(screen.getByText(message)).toHaveClass('break-words');
+  });
+
   test('requirements phase renders StrategySection with quality metrics', () => {
     const state = makeState({
       activeStage: 1,

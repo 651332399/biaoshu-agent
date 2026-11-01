@@ -1,12 +1,15 @@
 import {
+  ApiError,
   acceptChatProposal,
   confirmProject,
   escalateProject,
   getArtifact,
   getProjectChat,
   getProjectState,
+  regenerateProjectExport,
   rejectChatProposal,
   runProject,
+  subscribeGenerationAcceptance,
   sendProjectChat,
   uploadMaterial,
   uploadProject,
@@ -56,6 +59,7 @@ export interface WorkspaceEngine {
   revealChapterManually(chapterId: string): void;
   revealVolumeManually(volumeId: string): void;
   addCustomUserMessage(text: string, files?: File[] | { name: string; type: string }[]): void;
+  regenerateExport?(projectId: string, blocks: DocBlockData[], dirtyBlockIds: string[]): Promise<void>;
   acceptProposal?(proposalId: string): void;
   rejectProposal?(proposalId: string): void;
 }
@@ -190,6 +194,30 @@ function liveInitialState(): EngineState {
   };
 }
 
+interface PrecheckReport {
+  server_precheck_passed?: boolean;
+  delivery_check?: { issues?: { message?: string }[] };
+  font_inventory?: { documents?: { missing_fonts?: string[] }[] };
+}
+
+// 和引擎 _INTERNAL_DETAIL_RE 同一口径：路径、内部地址、项目 ID 不展示。
+// JS 的 \w 不含中文，lookbehind 要用 \p{L}，否则「证照/证明」会被当成路径。
+const INTERNAL_DETAIL_RE = /(?:https?|file):\/\/\S+|['"]\/[^'"\n]+['"]|(?<![\p{L}\p{N}_./:])\/[^\s'"，。；;：:）)\]]+|\b[0-9a-f]{32}\b/gu;
+
+function precheckFailureSummary(report: PrecheckReport): string {
+  const messages = (report.delivery_check?.issues ?? [])
+    .flatMap((issue) => (issue.message ? [issue.message.replace(INTERNAL_DETAIL_RE, '[内部信息]')] : []));
+  const missingFonts = [...new Set(
+    (report.font_inventory?.documents ?? []).flatMap((document) => document.missing_fonts ?? []),
+  )].sort();
+  if (missingFonts.length) messages.push(`字体包未登记：${missingFonts.join('、')}`);
+  if (!messages.length) return '请查看预检报告';
+  const shown = messages.slice(0, 3).join('；');
+  return messages.length > 3 ? `${shown}（共 ${messages.length} 项）` : shown;
+}
+
+const REGENERATION_FAILED = '重新导出未完成，可稍后重试；如有具体原因会显示在右侧 Copilot。';
+
 export class LiveSource implements WorkspaceEngine {
   private state = liveInitialState();
   private listeners = new Set<(s: EngineState) => void>();
@@ -199,6 +227,13 @@ export class LiveSource implements WorkspaceEngine {
   private lastEventId = 0;
   private lastChatEventId = 0;
   private currentEscalation: ProjectEscalation | null = null;
+  // 预检报告异步读取，读回来时轮次变了就是过期报告。
+  private exportRound = 0;
+  private regenerationRun: object | null = null;
+  // POST /export 抛异常时引擎不发任何终态事件，这一轮的开始事件不能再把页面带回转圈。
+  private exportFailed = false;
+  // 刷新后的页面没有 POST 可等，只能靠 generation 验收事件得知这一轮失败。
+  private stopGenerationWatch: (() => void) | null = null;
 
   constructor(
     private scenario: Scenario,
@@ -228,6 +263,10 @@ export class LiveSource implements WorkspaceEngine {
     this.lastEventId = 0;
     this.lastChatEventId = 0;
     this.currentEscalation = null;
+    this.exportRound += 1;
+    this.regenerationRun = null;
+    this.exportFailed = false;
+    this.unwatchGeneration();
     this.scenario.volumes = [];
     this.scenario.blocks = [];
     this.scenario.redlines = [];
@@ -307,12 +346,50 @@ export class LiveSource implements WorkspaceEngine {
         this.state.pendingCard = this.escalationToCard(this.currentEscalation);
         this.state.status = 'awaiting';
       }
+      this.exportFailed = remoteState.generation_status === 'server_precheck_failed' && !remoteState.awaiting_checkpoint;
+      if (remoteState.generation_status === 'generation_started' && remoteState.generation_id && !remoteState.awaiting_checkpoint) {
+        this.watchGeneration(projectId, remoteState.generation_id);
+      }
       this.connectEvents();
       this.connectChatEvents();
       await this.loadChatHistory();
       this.emit();
     } catch (error) {
       this.reportFailure('从后端恢复项目失败', error);
+    }
+  }
+
+  private unwatchGeneration() {
+    this.stopGenerationWatch?.();
+    this.stopGenerationWatch = null;
+  }
+
+  private watchGeneration(projectId: string, generationId: string) {
+    this.unwatchGeneration();
+    this.stopGenerationWatch = subscribeGenerationAcceptance(projectId, generationId, (event) => {
+      if (event.event === 'superseded') {
+        this.unwatchGeneration();
+        void this.watchCurrentGeneration(projectId);
+      } else if (event.event === 'awaiting_wps_acceptance') {
+        this.unwatchGeneration();
+      } else if (event.event === 'server_precheck_failed') {
+        this.unwatchGeneration();
+        this.settleRegeneration(REGENERATION_FAILED);
+      }
+    });
+  }
+
+  private async watchCurrentGeneration(projectId: string) {
+    try {
+      const remoteState = await getProjectState(projectId);
+      if (this.projectId !== projectId || this.regenerationRun) return;
+      if (remoteState.generation_status === 'server_precheck_failed') {
+        this.settleRegeneration(REGENERATION_FAILED);
+      } else if (remoteState.generation_status === 'generation_started' && remoteState.generation_id) {
+        this.watchGeneration(projectId, remoteState.generation_id);
+      }
+    } catch (error) {
+      if (this.projectId === projectId) this.reportFailure('读取项目状态失败', error);
     }
   }
 
@@ -548,6 +625,9 @@ export class LiveSource implements WorkspaceEngine {
     if (numericId > 0) this.lastEventId = numericId;
     if (this.state.error === 'SSE 连接中断，正在重试…') this.state.error = null;
     const data = event.data ? JSON.parse(event.data) as Record<string, unknown> : {};
+    if (name === 'node_started' || name === 'node_completed' || name === 'run_started' || name === 'run_completed') {
+      this.exportRound += 1;
+    }
     if (name === 'run_started') {
       this.state.error = null;
       this.state.status = 'playing';
@@ -598,6 +678,9 @@ export class LiveSource implements WorkspaceEngine {
           stage: this.state.activeStage || 5,
         },
       ];
+    } else if (name === 'node_completed') {
+      // POST /export 不发 run_completed，导出节点结束就是这次重新导出结束。
+      if (data.node === 'export') this.state.status = 'idle';
     } else if (name === 'run_failed') {
       this.state.error = `${data.error_type}: ${data.message}`;
       this.state.status = 'paused';
@@ -616,7 +699,63 @@ export class LiveSource implements WorkspaceEngine {
         checkpointBody: '当前产物待 WPS 更新域、回传证据并完成最终验收。',
       } as Step;
     }
+    if (this.exportFailed && this.state.status === 'playing' && this.state.activeStage >= 8) {
+      this.state.activeStage = Math.max(this.state.activeStage, 9);
+      this.state.status = 'idle';
+    }
     this.emit();
+  }
+
+  async regenerateExport(projectId: string, blocks: DocBlockData[], dirtyBlockIds: string[]) {
+    if (this.regenerationRun) return;
+    const run = {};
+    this.regenerationRun = run;
+    this.exportRound += 1;
+    this.exportFailed = false;
+    this.unwatchGeneration();
+    this.state.exportRegeneration = {
+      running: true,
+      revision: this.state.exportRegeneration?.revision ?? 0,
+      error: null,
+    };
+    this.state.status = 'playing';
+    this.state.error = null;
+    this.emit();
+    let failure: string | null = null;
+    try {
+      await regenerateProjectExport(projectId, blocks, dirtyBlockIds);
+    } catch (reason) {
+      // 预检被拦时接口只回 500，具体原因由预检报告事件写到 state.error。
+      failure = reason instanceof ApiError && reason.status >= 400 && reason.status < 500
+        ? reason.message
+        : REGENERATION_FAILED;
+    }
+    if (this.regenerationRun !== run) return;
+    this.regenerationRun = null;
+    this.settleRegeneration(failure);
+  }
+
+  private settleRegeneration(failure: string | null) {
+    const revision = this.state.exportRegeneration?.revision ?? 0;
+    this.state.exportRegeneration = { running: false, revision: revision + 1, error: failure };
+    this.exportFailed = failure !== null;
+    if (failure && this.state.activeStage === 8) this.state.activeStage = 9;
+    if (this.state.status === 'playing') this.state.status = failure ? 'paused' : 'idle';
+    this.emit();
+  }
+
+  /** POST /export 被拦时不发 run_failed，预检报告是这次失败唯一的事件和原因来源。 */
+  private async applyPrecheckReport(url: string) {
+    const round = this.exportRound;
+    let report: PrecheckReport;
+    try {
+      report = await getArtifact<PrecheckReport>(url);
+    } catch {
+      report = { server_precheck_passed: false };
+    }
+    if (report.server_precheck_passed !== false || round !== this.exportRound) return;
+    this.state.error = `服务器预检未通过，交付被阻断：${precheckFailureSummary(report)}`;
+    this.state.status = 'paused';
   }
 
   private async applyArtifact(type: string, url: string, data?: Record<string, unknown>) {
@@ -690,6 +829,8 @@ export class LiveSource implements WorkspaceEngine {
         ...this.state.revealedBlocks.filter((id) => !isOwnBlock(id)),
         ...newBlocks.map((b) => b.id),
       ];
+    } else if (type === 'style_check_report') {
+      await this.applyPrecheckReport(url);
     } else if (type === 'document_blocks') {
       const blocks = await getArtifact<DocBlockData[]>(url);
       this.scenario.blocks = blocks;
