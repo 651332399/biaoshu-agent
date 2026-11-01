@@ -295,6 +295,51 @@ describe('LiveSource', () => {
     expect(source.getState().error).toContain('交付被阻断');
   });
 
+  test('a blocked re-export settles from the precheck report and hides internal details', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      server_precheck_passed: false,
+      delivery_check: { issues: [
+        { message: '资格证明文件 未包含任何证照/证明附件' },
+        { message: '详见 /app/.projects/abc/report.json' },
+      ] },
+      font_inventory: { documents: [{ missing_fonts: ['方正小标宋简体'] }] },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    await source.handleEvent('artifact_ready', message({ node: 'export', artifact_type: 'style_check_report', url: '/api/projects/p1/artifacts/export/style_check_report.json' }, '2'));
+
+    expect(source.getState().status).toBe('paused');
+    expect(source.getState().error).toContain('资格证明文件 未包含任何证照/证明附件');
+    expect(source.getState().error).toContain('字体包未登记：方正小标宋简体');
+    expect(source.getState().error).not.toContain('/app/.projects');
+  });
+
+  test('an unreadable precheck report still ends the running state', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('missing', { status: 404 })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    await source.handleEvent('artifact_ready', message({ node: 'export', artifact_type: 'style_check_report', url: '/r.json' }, '2'));
+
+    expect(source.getState().status).toBe('paused');
+    expect(source.getState().error).toContain('服务器预检未通过');
+  });
+
+  test('a passing precheck report leaves the run going until the export node completes', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ server_precheck_passed: true }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    await source.handleEvent('artifact_ready', message({ node: 'export', artifact_type: 'style_check_report', url: '/r.json' }, '2'));
+    expect(source.getState().status).toBe('playing');
+    expect(source.getState().error).toBeNull();
+
+    await source.handleEvent('node_completed', message({ node: 'compliance' }, '3'));
+    expect(source.getState().status).toBe('playing');
+    await source.handleEvent('node_completed', message({ node: 'export' }, '4'));
+    expect(source.getState().status).toBe('idle');
+  });
+
   test('a later node start clears a historical failure and progress stays current', async () => {
     const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
     await source.handleEvent('run_failed', message({ node: 'generate', error_type: 'ValidationError', message: 'legacy id' }, '2'));

@@ -190,6 +190,28 @@ function liveInitialState(): EngineState {
   };
 }
 
+interface PrecheckReport {
+  server_precheck_passed?: boolean;
+  delivery_check?: { issues?: { message?: string }[] };
+  font_inventory?: { documents?: { missing_fonts?: string[] }[] };
+}
+
+// 和引擎 _INTERNAL_DETAIL_RE 同一口径：路径、内部地址、项目 ID 不展示。
+// JS 的 \w 不含中文，lookbehind 要用 \p{L}，否则「证照/证明」会被当成路径。
+const INTERNAL_DETAIL_RE = /(?:https?|file):\/\/\S+|['"]\/[^'"\n]+['"]|(?<![\p{L}\p{N}_./:])\/[^\s'"，。；;：:）)\]]+|\b[0-9a-f]{32}\b/gu;
+
+function precheckFailureSummary(report: PrecheckReport): string {
+  const messages = (report.delivery_check?.issues ?? [])
+    .flatMap((issue) => (issue.message ? [issue.message.replace(INTERNAL_DETAIL_RE, '[内部信息]')] : []));
+  const missingFonts = [...new Set(
+    (report.font_inventory?.documents ?? []).flatMap((document) => document.missing_fonts ?? []),
+  )].sort();
+  if (missingFonts.length) messages.push(`字体包未登记：${missingFonts.join('、')}`);
+  if (!messages.length) return '请查看预检报告';
+  const shown = messages.slice(0, 3).join('；');
+  return messages.length > 3 ? `${shown}（共 ${messages.length} 项）` : shown;
+}
+
 export class LiveSource implements WorkspaceEngine {
   private state = liveInitialState();
   private listeners = new Set<(s: EngineState) => void>();
@@ -598,6 +620,9 @@ export class LiveSource implements WorkspaceEngine {
           stage: this.state.activeStage || 5,
         },
       ];
+    } else if (name === 'node_completed') {
+      // POST /export 不发 run_completed，导出节点结束就是这次重新导出结束。
+      if (data.node === 'export') this.state.status = 'idle';
     } else if (name === 'run_failed') {
       this.state.error = `${data.error_type}: ${data.message}`;
       this.state.status = 'paused';
@@ -617,6 +642,19 @@ export class LiveSource implements WorkspaceEngine {
       } as Step;
     }
     this.emit();
+  }
+
+  /** POST /export 被拦时不发 run_failed，预检报告是这次失败唯一的事件和原因来源。 */
+  private async applyPrecheckReport(url: string) {
+    let report: PrecheckReport;
+    try {
+      report = await getArtifact<PrecheckReport>(url);
+    } catch {
+      report = { server_precheck_passed: false };
+    }
+    if (report.server_precheck_passed !== false) return;
+    this.state.error = `服务器预检未通过，交付被阻断：${precheckFailureSummary(report)}`;
+    this.state.status = 'paused';
   }
 
   private async applyArtifact(type: string, url: string, data?: Record<string, unknown>) {
@@ -690,6 +728,8 @@ export class LiveSource implements WorkspaceEngine {
         ...this.state.revealedBlocks.filter((id) => !isOwnBlock(id)),
         ...newBlocks.map((b) => b.id),
       ];
+    } else if (type === 'style_check_report') {
+      await this.applyPrecheckReport(url);
     } else if (type === 'document_blocks') {
       const blocks = await getArtifact<DocBlockData[]>(url);
       this.scenario.blocks = blocks;

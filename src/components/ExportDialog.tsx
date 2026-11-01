@@ -6,6 +6,7 @@ import {
   FileCheck2,
   LoaderCircle,
   PackageCheck,
+  RefreshCw,
   ShieldCheck,
   Upload,
 } from 'lucide-react';
@@ -16,23 +17,27 @@ import type {
   WpsAcceptanceChecks,
   WpsEvidenceType,
 } from '../engine/types';
-import type { Scenario } from '../engine/demo/types';
+import type { DocBlockData, Scenario } from '../engine/demo/types';
 import {
+  ApiError,
   getGenerationAcceptance,
   getProjectState,
+  regenerateProjectExport,
   submitWpsAcceptance,
   subscribeGenerationAcceptance,
   uploadWpsEvidence,
 } from '../lib/api';
 import { getDisplayVolumes } from '../lib/exportPlanView';
 import { apiUrl } from '../lib/apiBase';
-import { Checkbox, HiddenFileInput } from '../vendor/zy-ui';
+import { Button, Checkbox, HiddenFileInput } from '../vendor/zy-ui';
 
 
 interface Props {
   scenario: Scenario;
   backendExportPlan?: BackendExportPlan | null;
   backendOutline?: BackendOutline | null;
+  blocks?: DocBlockData[];
+  dirtyBlockIds?: string[];
 }
 
 
@@ -144,7 +149,7 @@ function issueMessage(issue: GenerationAcceptance['validation_issues'][number] |
 }
 
 
-export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Props) {
+export function ExportDialog({ scenario, backendExportPlan, backendOutline, blocks = [], dirtyBlockIds = [] }: Props) {
   const displayVolumes = useMemo(
     () => getDisplayVolumes(scenario, backendExportPlan, backendOutline),
     [scenario, backendExportPlan, backendOutline],
@@ -158,6 +163,8 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
   const [fontInventory, setFontInventory] = useState<WorkstationFontInventory | null>(null);
   const [checks, setChecks] = useState<WpsAcceptanceChecks>(EMPTY_WPS_CHECKS);
   const [error, setError] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [bindRevision, setBindRevision] = useState(0);
 
   const refreshAcceptance = useCallback(async (project: string, generation: string) => {
     const next = await getGenerationAcceptance(project, generation);
@@ -230,7 +237,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
       active = false;
       unsubscribe?.();
     };
-  }, [projectId, refreshAcceptance]);
+  }, [projectId, refreshAcceptance, bindRevision]);
 
   const missingSlots = useMemo(
     () => new Set(acceptance?.missing_evidence_slots ?? []),
@@ -321,6 +328,23 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!projectId) return;
+    setRegenerating(true);
+    setError(null);
+    try {
+      await regenerateProjectExport(projectId, blocks, dirtyBlockIds);
+    } catch (reason) {
+      // 预检被拦时接口只回 500，具体原因由预检报告事件写到右侧 Copilot。
+      setError(reason instanceof ApiError && reason.status >= 400 && reason.status < 500
+        ? reason.message
+        : '重新导出未完成，请查看当前状态和右侧 Copilot 提示。');
+    } finally {
+      setRegenerating(false);
+      setBindRevision((revision) => revision + 1);
+    }
+  };
+
   const status = acceptance?.status;
   const statusView = status && status in STATUS_VIEW
     ? STATUS_VIEW[status as keyof typeof STATUS_VIEW]
@@ -397,6 +421,21 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
                   <Download className="h-4 w-4" />
                   下载预验收包
                 </a>
+              ) : status === 'server_precheck_failed' ? (
+                <>
+                  {/* 空 blocks 会把 document_blocks.json 覆盖成空，正文没加载好时不能提交。 */}
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    loading={regenerating}
+                    disabled={blocks.length === 0}
+                    onClick={() => void handleRegenerate()}
+                  >
+                    {!regenerating && <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
+                    重新导出
+                  </Button>
+                  <span>{blocks.length === 0 ? '正文加载完成后才能重新导出。' : '会重新跑合规校验，通常需要几分钟。'}</span>
+                </>
               ) : null}
             </div>
           )}
@@ -531,7 +570,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
               <h4 id="validation-issues-title" className="mb-2 text-sm font-semibold text-red-700">验收问题</h4>
               <ul className="space-y-1.5">
                 {acceptance.validation_issues.map((issue, index) => (
-                  <li key={`${typeof issue === 'string' ? issue : issue.code}-${index}`} className="rounded-md bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                  <li key={`${typeof issue === 'string' ? issue : issue.code}-${index}`} className="break-words rounded-md bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
                     {issueMessage(issue)}
                   </li>
                 ))}
@@ -544,7 +583,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
               <h4 id="archiving-issues-title" className="mb-2 text-sm font-semibold text-red-700">归档问题</h4>
               <ul className="space-y-1.5">
                 {acceptance.archiving_issues.map((issue, index) => (
-                  <li key={`${issue.code}-${index}`} className="rounded-md bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                  <li key={`${issue.code}-${index}`} className="break-words rounded-md bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
                     {issueMessage(issue)}
                   </li>
                 ))}

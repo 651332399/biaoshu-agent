@@ -105,7 +105,7 @@ export function CopilotPanel({ state, scenario, engine, phase, onOpenLibrary }: 
         {phase === 'export' && <ExportSummarySection state={state} />}
 
         {state.error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-[11px] text-red-700">{state.error}</div>
+          <div className="break-words rounded-lg border border-red-200 bg-red-50 p-3 text-[11px] text-red-700">{state.error}</div>
         )}
       </div>
 
