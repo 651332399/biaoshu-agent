@@ -97,6 +97,8 @@ export function DocumentCanvas({ state, scenario, engine, phase, onOpenLibrary }
         backendOutline={state.backendOutline}
         blocks={documentStore.blocks}
         dirtyBlockIds={[...documentStore.dirtyBlocks]}
+        engine={engine}
+        regeneration={state.exportRegeneration}
       />
     );
   }

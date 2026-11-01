@@ -5,6 +5,14 @@ import { type Scheduler, realScheduler } from './scheduler';
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'awaiting';
 
+/** 重新导出的请求状态：放在引擎层，因为导出页会在合规阶段卸载，请求结束时可能已不是发起时的组件。 */
+export interface ExportRegeneration {
+  running: boolean;
+  /** 每次请求结束时加一，导出页据此重新绑定当前 generation。 */
+  revision: number;
+  error: string | null;
+}
+
 export interface EngineState {
   status: PlaybackStatus;
   cursor: number;
@@ -30,6 +38,7 @@ export interface EngineState {
   error: string | null;
   mode: 'demo' | 'live';
   chat: ChatState;
+  exportRegeneration?: ExportRegeneration;
 }
 
 export function blocking(kind: StepKind): boolean {

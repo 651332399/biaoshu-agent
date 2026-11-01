@@ -1,10 +1,12 @@
 import {
+  ApiError,
   acceptChatProposal,
   confirmProject,
   escalateProject,
   getArtifact,
   getProjectChat,
   getProjectState,
+  regenerateProjectExport,
   rejectChatProposal,
   runProject,
   sendProjectChat,
@@ -56,6 +58,7 @@ export interface WorkspaceEngine {
   revealChapterManually(chapterId: string): void;
   revealVolumeManually(volumeId: string): void;
   addCustomUserMessage(text: string, files?: File[] | { name: string; type: string }[]): void;
+  regenerateExport?(projectId: string, blocks: DocBlockData[], dirtyBlockIds: string[]): Promise<void>;
   acceptProposal?(proposalId: string): void;
   rejectProposal?(proposalId: string): void;
 }
@@ -221,6 +224,11 @@ export class LiveSource implements WorkspaceEngine {
   private lastEventId = 0;
   private lastChatEventId = 0;
   private currentEscalation: ProjectEscalation | null = null;
+  // 预检报告异步读取，读回来时轮次变了就是过期报告。
+  private exportRound = 0;
+  private regenerationRun: object | null = null;
+  // POST /export 抛异常时引擎不发任何终态事件，这一轮的开始事件不能再把页面带回转圈。
+  private exportFailed = false;
 
   constructor(
     private scenario: Scenario,
@@ -250,6 +258,9 @@ export class LiveSource implements WorkspaceEngine {
     this.lastEventId = 0;
     this.lastChatEventId = 0;
     this.currentEscalation = null;
+    this.exportRound += 1;
+    this.regenerationRun = null;
+    this.exportFailed = false;
     this.scenario.volumes = [];
     this.scenario.blocks = [];
     this.scenario.redlines = [];
@@ -329,6 +340,7 @@ export class LiveSource implements WorkspaceEngine {
         this.state.pendingCard = this.escalationToCard(this.currentEscalation);
         this.state.status = 'awaiting';
       }
+      this.exportFailed = remoteState.generation_status === 'server_precheck_failed' && !remoteState.awaiting_checkpoint;
       this.connectEvents();
       this.connectChatEvents();
       await this.loadChatHistory();
@@ -570,6 +582,9 @@ export class LiveSource implements WorkspaceEngine {
     if (numericId > 0) this.lastEventId = numericId;
     if (this.state.error === 'SSE 连接中断，正在重试…') this.state.error = null;
     const data = event.data ? JSON.parse(event.data) as Record<string, unknown> : {};
+    if (name === 'node_started' || name === 'node_completed' || name === 'run_started' || name === 'run_completed') {
+      this.exportRound += 1;
+    }
     if (name === 'run_started') {
       this.state.error = null;
       this.state.status = 'playing';
@@ -641,19 +656,52 @@ export class LiveSource implements WorkspaceEngine {
         checkpointBody: '当前产物待 WPS 更新域、回传证据并完成最终验收。',
       } as Step;
     }
+    if (this.exportFailed && this.state.status === 'playing' && this.state.activeStage >= 8) {
+      this.state.activeStage = Math.max(this.state.activeStage, 9);
+      this.state.status = 'idle';
+    }
+    this.emit();
+  }
+
+  async regenerateExport(projectId: string, blocks: DocBlockData[], dirtyBlockIds: string[]) {
+    if (this.regenerationRun) return;
+    const run = {};
+    this.regenerationRun = run;
+    this.exportRound += 1;
+    this.exportFailed = false;
+    const revision = this.state.exportRegeneration?.revision ?? 0;
+    this.state.exportRegeneration = { running: true, revision, error: null };
+    this.state.status = 'playing';
+    this.state.error = null;
+    this.emit();
+    let failure: string | null = null;
+    try {
+      await regenerateProjectExport(projectId, blocks, dirtyBlockIds);
+    } catch (reason) {
+      // 预检被拦时接口只回 500，具体原因由预检报告事件写到 state.error。
+      failure = reason instanceof ApiError && reason.status >= 400 && reason.status < 500
+        ? reason.message
+        : '重新导出未完成，可稍后重试；如有具体原因会显示在右侧 Copilot。';
+    }
+    if (this.regenerationRun !== run) return;
+    this.regenerationRun = null;
+    this.state.exportRegeneration = { running: false, revision: revision + 1, error: failure };
+    this.exportFailed = failure !== null;
+    if (failure && this.state.activeStage === 8) this.state.activeStage = 9;
+    if (this.state.status === 'playing') this.state.status = failure ? 'paused' : 'idle';
     this.emit();
   }
 
   /** POST /export 被拦时不发 run_failed，预检报告是这次失败唯一的事件和原因来源。 */
   private async applyPrecheckReport(url: string) {
+    const round = this.exportRound;
     let report: PrecheckReport;
     try {
       report = await getArtifact<PrecheckReport>(url);
     } catch {
       report = { server_precheck_passed: false };
     }
-    // 事件重放时请求可能晚于后续事件返回：导出节点已不是当前阶段，这份报告就过期了。
-    if (report.server_precheck_passed !== false || this.state.activeStage < 9) return;
+    if (report.server_precheck_passed !== false || round !== this.exportRound) return;
     this.state.error = `服务器预检未通过，交付被阻断：${precheckFailureSummary(report)}`;
     this.state.status = 'paused';
   }

@@ -18,11 +18,11 @@ import type {
   WpsEvidenceType,
 } from '../engine/types';
 import type { DocBlockData, Scenario } from '../engine/demo/types';
+import type { ExportRegeneration } from '../engine/ScenarioEngine';
+import type { WorkspaceEngine } from '../engine/sources';
 import {
-  ApiError,
   getGenerationAcceptance,
   getProjectState,
-  regenerateProjectExport,
   submitWpsAcceptance,
   subscribeGenerationAcceptance,
   uploadWpsEvidence,
@@ -38,6 +38,8 @@ interface Props {
   backendOutline?: BackendOutline | null;
   blocks?: DocBlockData[];
   dirtyBlockIds?: string[];
+  engine?: Pick<WorkspaceEngine, 'regenerateExport'>;
+  regeneration?: ExportRegeneration;
 }
 
 
@@ -149,7 +151,7 @@ function issueMessage(issue: GenerationAcceptance['validation_issues'][number] |
 }
 
 
-export function ExportDialog({ scenario, backendExportPlan, backendOutline, blocks = [], dirtyBlockIds = [] }: Props) {
+export function ExportDialog({ scenario, backendExportPlan, backendOutline, blocks = [], dirtyBlockIds = [], engine, regeneration }: Props) {
   const displayVolumes = useMemo(
     () => getDisplayVolumes(scenario, backendExportPlan, backendOutline),
     [scenario, backendExportPlan, backendOutline],
@@ -163,8 +165,9 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline, bloc
   const [fontInventory, setFontInventory] = useState<WorkstationFontInventory | null>(null);
   const [checks, setChecks] = useState<WpsAcceptanceChecks>(EMPTY_WPS_CHECKS);
   const [error, setError] = useState<string | null>(null);
-  const [regenerating, setRegenerating] = useState(false);
-  const [bindRevision, setBindRevision] = useState(0);
+  const regenerating = regeneration?.running ?? false;
+  const regenerationRevision = regeneration?.revision ?? 0;
+  const shownError = error ?? regeneration?.error ?? null;
 
   const refreshAcceptance = useCallback(async (project: string, generation: string) => {
     const next = await getGenerationAcceptance(project, generation);
@@ -237,7 +240,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline, bloc
       active = false;
       unsubscribe?.();
     };
-  }, [projectId, refreshAcceptance, bindRevision]);
+  }, [projectId, refreshAcceptance, regenerationRevision]);
 
   const missingSlots = useMemo(
     () => new Set(acceptance?.missing_evidence_slots ?? []),
@@ -328,21 +331,10 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline, bloc
     }
   };
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = () => {
     if (!projectId) return;
-    setRegenerating(true);
     setError(null);
-    try {
-      await regenerateProjectExport(projectId, blocks, dirtyBlockIds);
-    } catch (reason) {
-      // 预检被拦时接口只回 500，具体原因由预检报告事件写到右侧 Copilot。
-      setError(reason instanceof ApiError && reason.status >= 400 && reason.status < 500
-        ? reason.message
-        : '重新导出未完成，请查看当前状态和右侧 Copilot 提示。');
-    } finally {
-      setRegenerating(false);
-      setBindRevision((revision) => revision + 1);
-    }
+    void engine?.regenerateExport?.(projectId, blocks, dirtyBlockIds);
   };
 
   const status = acceptance?.status;
@@ -395,10 +387,10 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline, bloc
             </div>
           )}
 
-          {error && (
+          {shownError && (
             <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 break-words">{error}</span>
+              <span className="min-w-0 break-words">{shownError}</span>
             </div>
           )}
 
@@ -429,7 +421,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline, bloc
                     variant="primary"
                     loading={regenerating}
                     disabled={blocks.length === 0}
-                    onClick={() => void handleRegenerate()}
+                    onClick={handleRegenerate}
                   >
                     {!regenerating && <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
                     重新导出

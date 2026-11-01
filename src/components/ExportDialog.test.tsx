@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { BackendExportPlan } from '../engine/types';
 import type { DocBlockData, Scenario } from '../engine/demo/types';
+import { LiveSource } from '../engine/sources';
 import { ExportDialog } from './ExportDialog';
 import { setApiBase } from '../lib/apiBase';
 
@@ -185,6 +187,27 @@ describe('ExportDialog WPS acceptance', () => {
     ));
   }
 
+  function renderWithEngine(props: { blocks: DocBlockData[]; dirtyBlockIds?: string[] }) {
+    const source = new LiveSource(makeScenario());
+    function Harness() {
+      const [state, setState] = useState(source.getState());
+      useEffect(() => {
+        const unsubscribe = source.subscribe(setState);
+        return () => { unsubscribe(); };
+      }, []);
+      return (
+        <ExportDialog
+          scenario={makeScenario()}
+          backendExportPlan={makeExportPlan()}
+          engine={source}
+          regeneration={state.exportRegeneration}
+          {...props}
+        />
+      );
+    }
+    render(<Harness />);
+  }
+
   function exportCalls(fetchMock: ReturnType<typeof stubGeneration>) {
     return fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/export'));
   }
@@ -192,7 +215,7 @@ describe('ExportDialog WPS acceptance', () => {
   test('a failed precheck can re-export the current blocks and then rebinds the generation', async () => {
     const fetchMock = stubGeneration('server_precheck_failed');
     stubRegenerate(fetchMock, () => jsonResponse({ status: 'exported', url: '/x' }));
-    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} blocks={BLOCKS} dirtyBlockIds={['b1']} />);
+    renderWithEngine({ blocks: BLOCKS, dirtyBlockIds: ['b1'] });
 
     fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
 
@@ -218,7 +241,7 @@ describe('ExportDialog WPS acceptance', () => {
   test('a server error on re-export shows guidance instead of the raw 500 text', async () => {
     const fetchMock = stubGeneration('server_precheck_failed');
     stubRegenerate(fetchMock, () => new Response('Internal Server Error', { status: 500 }));
-    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} blocks={BLOCKS} />);
+    renderWithEngine({ blocks: BLOCKS });
 
     fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
 
@@ -229,7 +252,7 @@ describe('ExportDialog WPS acceptance', () => {
   test('a rejected re-export shows the reason from the API', async () => {
     const fetchMock = stubGeneration('server_precheck_failed');
     stubRegenerate(fetchMock, () => jsonResponse({ detail: '项目尚未生成正文，不能重新导出' }, 409));
-    render(<ExportDialog scenario={makeScenario()} backendExportPlan={makeExportPlan()} blocks={BLOCKS} />);
+    renderWithEngine({ blocks: BLOCKS });
 
     fireEvent.click(await screen.findByRole('button', { name: /重新导出/ }));
 

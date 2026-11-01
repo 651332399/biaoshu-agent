@@ -330,6 +330,113 @@ describe('LiveSource', () => {
     expect(source.getState().error).toBeNull();
   });
 
+  test('a delayed failed report from an earlier round does not overwrite a later successful re-export', async () => {
+    let finishOld: (response: Response) => void = () => {};
+    const passing = new Response(JSON.stringify({ server_precheck_passed: true }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finishOld = resolve; }))
+      .mockResolvedValueOnce(passing));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    const old = source.handleEvent('artifact_ready', message({ artifact_type: 'style_check_report', url: '/r.json' }, '2'));
+    await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '3'));
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '4'));
+    await source.handleEvent('artifact_ready', message({ artifact_type: 'style_check_report', url: '/r.json' }, '5'));
+    await source.handleEvent('node_completed', message({ node: 'export' }, '6'));
+    finishOld(new Response(JSON.stringify({ server_precheck_passed: false, delivery_check: { issues: [{ message: '旧轮次缺资质' }] } }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    await old;
+
+    expect(source.getState().status).toBe('idle');
+    expect(source.getState().error).toBeNull();
+  });
+
+  test('a report pending when a new re-export starts is dropped', async () => {
+    let finishOld: (response: Response) => void = () => {};
+    let finishExport: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finishOld = resolve; }))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finishExport = resolve; })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('node_started', message({ node: 'export', stage_index: 9 }, '1'));
+    const old = source.handleEvent('artifact_ready', message({ artifact_type: 'style_check_report', url: '/r.json' }, '2'));
+    const running = source.regenerateExport('p1', [], []);
+    finishOld(new Response(JSON.stringify({ server_precheck_passed: false }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    await old;
+
+    expect(source.getState().status).toBe('playing');
+    expect(source.getState().error).toBeNull();
+    finishExport(new Response(JSON.stringify({ status: 'exported', url: '/x' }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    await running;
+    expect(source.getState().status).toBe('idle');
+  });
+
+  test('a replayed compliance start of an already failed generation does not spin after a reload', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (request: RequestInfo | URL) => (
+      String(request).endsWith('/state')
+        ? new Response(JSON.stringify({
+          project_id: 'p1', completed_nodes: [], current_node: null, awaiting_checkpoint: null,
+          awaiting_escalation: null, artifacts: [], generation_id: 'g1',
+          generation_status: 'server_precheck_failed', server_precheck_passed: false, final_delivery_approved: false,
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+        : new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+    )));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.restoreProject('p1');
+    await source.handleEvent('node_started', message({ node: 'generate', stage_index: 5 }, '1'));
+    expect(source.getState().status).toBe('playing');
+    await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '2'));
+
+    expect(source.getState().status).toBe('idle');
+    expect(source.getState().activeStage).toBe(9);
+  });
+
+  test('an export start arriving after the POST failed does not restart the spinner', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('Internal Server Error', { status: 500 })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.regenerateExport('p1', [], []);
+    await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '1'));
+
+    expect(source.getState().status).not.toBe('playing');
+    expect(source.getState().activeStage).toBe(9);
+    expect(source.getState().exportRegeneration).toMatchObject({ running: false, revision: 1 });
+    expect(source.getState().exportRegeneration?.error).toContain('重新导出未完成');
+  });
+
+  test('a re-export settling after the project was reset leaves the new state alone', async () => {
+    let finishExport: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finishExport = resolve; })));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    const running = source.regenerateExport('p1', [], []);
+    source.reset();
+    finishExport(new Response('Internal Server Error', { status: 500 }));
+    await running;
+
+    expect(source.getState().status).toBe('idle');
+    expect(source.getState().exportRegeneration).toBeUndefined();
+  });
+
+  test('a second re-export while one is running sends nothing', async () => {
+    let finishExport: (response: Response) => void = () => {};
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finishExport = resolve; }));
+    vi.stubGlobal('fetch', fetchMock);
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    const running = source.regenerateExport('p1', [], []);
+    await source.regenerateExport('p1', [], []);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    finishExport(new Response(JSON.stringify({ status: 'exported', url: '/x' }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    await running;
+  });
+
   test('an unreadable precheck report still ends the running state', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('missing', { status: 404 })));
     const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
