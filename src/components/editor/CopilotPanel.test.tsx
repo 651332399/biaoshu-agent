@@ -88,6 +88,15 @@ function makeEngine(overrides: Partial<WorkspaceEngine> = {}): WorkspaceEngine {
   };
 }
 
+// GUIX-460：透明度会把 token 色淡化到 AA 以下，文字及其祖先不得带 opacity-*（hover/disabled 等状态前缀除外）。
+function fadedAncestors(el: HTMLElement | null): string[] {
+  const hits: string[] = [];
+  for (let node = el; node; node = node.parentElement) {
+    node.classList.forEach((cls) => { if (/^opacity-\d+$/.test(cls) && cls !== 'opacity-100') hits.push(cls); });
+  }
+  return hits;
+}
+
 describe('CopilotPanel', () => {
   test('子路径部署为服务端返回的下载路径添加前缀', () => {
     setApiBase('/biaoshu/');
@@ -517,5 +526,35 @@ describe('CopilotPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '拒绝' }));
     expect(engine.acceptProposal).toHaveBeenCalledWith('p-0001');
     expect(engine.rejectProposal).toHaveBeenCalledWith('p-0001');
+  });
+
+  test('stale proposal stays readable: no opacity on the card or its text', () => {
+    const state = makeState({
+      chat: {
+        ...createEmptyChatState(),
+        proposals: [{
+          proposal_id: 'p-0002',
+          turn_id: 't-0002',
+          target_artifact: 'requirements',
+          checkpoint: 1,
+          base_fingerprint: 'base',
+          result_fingerprint: 'result',
+          patch: [],
+          op_targets: [],
+          diff: [],
+          summary: '过期的提案说明。',
+          status: 'stale',
+          created_by: 'assistant',
+          created_at: '2026-07-21T00:00:01Z',
+          resolved_by: null,
+          resolved_at: null,
+        }],
+      },
+    });
+
+    render(<CopilotPanel state={state} scenario={makeScenario()} engine={makeEngine()} phase="requirements" onOpenLibrary={vi.fn()} />);
+
+    expect(screen.getByText('已过期')).toBeInTheDocument();
+    expect(fadedAncestors(screen.getByText('过期的提案说明。'))).toEqual([]);
   });
 });

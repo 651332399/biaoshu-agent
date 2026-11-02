@@ -17,6 +17,15 @@ function makeRequirements(count: number): BackendRequirement[] {
 
 afterEach(cleanup);
 
+// GUIX-460：透明度会把 token 色淡化到 AA 以下，文字及其祖先不得带 opacity-*（hover/disabled 等状态前缀除外）。
+function fadedAncestors(el: HTMLElement | null): string[] {
+  const hits: string[] = [];
+  for (let node = el; node; node = node.parentElement) {
+    node.classList.forEach((cls) => { if (/^opacity-\d+$/.test(cls) && cls !== 'opacity-100') hits.push(cls); });
+  }
+  return hits;
+}
+
 describe('DecisionCard', () => {
   test('checkpoint shows confirm button and triggers onConfirm', () => {
     const card: Step = {
@@ -148,6 +157,7 @@ describe('DecisionCard', () => {
 
     expect(screen.getByText('待补充素材清单 · 1 项')).toBeInTheDocument();
     expect(screen.getByText('公司资质证明')).toBeInTheDocument();
+    expect(fadedAncestors(screen.getByText('覆盖率'))).toEqual([]);
   });
 });
 
