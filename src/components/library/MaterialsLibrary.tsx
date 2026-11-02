@@ -92,9 +92,9 @@ export function MaterialsLibrary({ materials }: Props) {
     <div className="flex-1 overflow-y-auto bg-[var(--canvas)] p-6 md:p-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6">
-          <h1 className="text-[22px] font-black text-[var(--zy-text)] flex items-center gap-2">
+          <h1 className="text-[22px] font-black text-[var(--zy-text)] flex flex-wrap items-center gap-x-2">
             迈创企业资料库
-            <span className="text-xs font-medium text-[var(--muted)]">5 大底座 · 共 {items.length} 项</span>
+            <span className="whitespace-nowrap text-xs font-medium text-[var(--muted)]">5 大底座 · 共 {items.length} 项</span>
             {offline && <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">演示数据(后端未连接)</span>}
           </h1>
           <p className="mt-1 text-[13px] text-[var(--muted)]">编写标书时自动检索匹配;缺失要件会提示补充,避免废标。</p>
@@ -171,9 +171,11 @@ export function MaterialsLibrary({ materials }: Props) {
                       {CAT_TITLE[c.key]}
                       <span className="text-[11px] font-medium text-[var(--muted)]">0 项</span>
                     </h2>
-                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-600 flex items-center gap-1.5">
-                      <Ban aria-hidden="true" size={13} />
-                      <span className="font-bold">缺失</span> — 暂无该分类资料,请上传补充,避免因材料缺失导致废标。
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-600 flex items-start gap-1.5">
+                      <Ban aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
+                      <p className="min-w-0">
+                        <span className="whitespace-nowrap font-bold">缺失</span> — 暂无该分类资料,请上传补充,避免因材料缺失导致废标。
+                      </p>
                     </div>
                   </section>
                 );

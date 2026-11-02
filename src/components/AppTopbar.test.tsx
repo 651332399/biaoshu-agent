@@ -39,6 +39,17 @@ describe('AppTopbar', () => {
     expect(screen.getByText('标书生成员')).toBeInTheDocument();
   });
 
+  // GUIX-471：jsdom 不做布局，这里守住窄屏（html.zy-compact，≤760px）的取舍；实际效果用 Chromium 100 在 360 宽度验收。
+  test('keeps the employee name on one line and drops logo and account name at 360 wide', async () => {
+    stubMe({ displayName: '演示账号 01', activeTenant: { name: '演示企业' } });
+    render(<AppTopbar />);
+    expect(screen.getByText('标书生成员')).toHaveClass('whitespace-nowrap');
+    expect(screen.getByRole('link', { name: '返回智员平台' })).toHaveClass('whitespace-nowrap');
+    expect(screen.getByAltText('智员')).toHaveClass('compact:hidden');
+    await screen.findByRole('button', { name: '账号：演示账号 01' });
+    expect(screen.getByText('演示账号 01')).toHaveClass('compact:hidden');
+  });
+
   describe('logout', () => {
     async function runLogout({ logoutStatus = 204, issueStatus = 200 } = {}) {
       const top = { location: { href: '/biaoshu/' } };
