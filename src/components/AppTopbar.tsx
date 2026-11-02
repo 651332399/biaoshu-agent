@@ -59,24 +59,27 @@ export function AppTopbar() {
   const account = usePlatformAccount();
   const [logoutFailed, setLogoutFailed] = useState(false);
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--zy-line)] bg-[var(--zy-surface)] px-6 z-30">
-      <div className="flex items-center gap-3">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--zy-line)] bg-[var(--zy-surface)] px-6 z-30 relative compact:px-4">
+      <div className="flex shrink-0 items-center gap-3">
         {!embedded && (
           <>
-            <img className="h-6" src="/assets/brand/zhiyuan-logo-v1.svg" alt="智员" />
-            <span className="h-4 w-px bg-[var(--zy-line)]" aria-hidden="true" />
+            <img className="h-6 compact:hidden" src="/assets/brand/zhiyuan-logo-v1.svg" alt="智员" />
+            <span className="h-4 w-px bg-[var(--zy-line)] compact:hidden" aria-hidden="true" />
           </>
         )}
-        <span className="text-sm font-bold text-[var(--zy-text)]">{EMPLOYEE_NAME}</span>
+        <span className="whitespace-nowrap text-sm font-bold text-[var(--zy-text)]">{EMPLOYEE_NAME}</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-4">
         {!embedded && (
-          <a className="text-[13px] font-medium text-[var(--zy-blue)] hover:text-[var(--zy-blue-dark)]" href={PLATFORM_URL} target="_top">
+          <a className="whitespace-nowrap text-[13px] font-medium text-[var(--zy-blue)] hover:text-[var(--zy-blue-dark)]" href={PLATFORM_URL} target="_top">
             返回智员平台
           </a>
         )}
         {logoutFailed && (
-          <span role="alert" className="text-[13px] text-[var(--zy-red)]">
+          <span
+            role="alert"
+            className="whitespace-nowrap text-[13px] text-[var(--zy-red)] compact:absolute compact:right-4 compact:top-full compact:mt-1 compact:rounded-lg compact:border compact:border-[var(--zy-line)] compact:bg-[var(--zy-surface)] compact:px-2 compact:py-1"
+          >
             退出失败，请重试
           </span>
         )}
@@ -85,17 +88,17 @@ export function AppTopbar() {
             trigger={
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-[10px] px-1.5 py-1 text-[13px] text-[var(--zy-text)] hover:bg-[var(--zy-bg)]"
+                className="flex shrink-0 items-center gap-2 rounded-[10px] px-1.5 py-1 text-[13px] text-[var(--zy-text)] hover:bg-[var(--zy-bg)]"
                 aria-label={`账号：${account.displayName}`}
               >
                 <span
-                  className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[var(--zy-blue-bg)] text-[13px] font-bold text-[var(--zy-blue)]"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-[var(--zy-blue-bg)] text-[13px] font-bold text-[var(--zy-blue)]"
                   aria-hidden="true"
                 >
                   {account.displayName.slice(0, 1)}
                 </span>
-                <span>{account.displayName}</span>
-                <ChevronDown size={14} aria-hidden="true" className="text-[var(--zy-muted)]" />
+                <span className="max-w-40 truncate compact:hidden" title={account.displayName}>{account.displayName}</span>
+                <ChevronDown size={14} aria-hidden="true" className="shrink-0 text-[var(--zy-muted)]" />
               </button>
             }
             items={[

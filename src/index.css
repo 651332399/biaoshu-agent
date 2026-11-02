@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 窄屏跟 watchViewportWidth 写在 <html> 上的 zy-compact（≤760px）走：钉钉折叠屏分栏时 @media 不生效。 */
+@custom-variant compact (.zy-compact &);
+
 /* ============================================================
    智能标书编写 Agent · 设计 token
    --zy-* token 来自智员平台 zy-1.0.0.css（src/vendor/zy-ui/，main.tsx 先于本文件引入），本文件不写色值。

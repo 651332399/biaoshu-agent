@@ -37,6 +37,19 @@ describe('MaterialsLibrary (backend-connected)', () => {
     expect(listMaterials).toHaveBeenCalled();
   });
 
+  // GUIX-471：「缺失」和说明文字不能是同一行的两个 flex 项，否则 360 宽度下标签被压成一字一行。
+  test('missing category label stays on one line inside its sentence', async () => {
+    render(<MaterialsLibrary materials={[]} matched={[]} />);
+    await screen.findByText('CMA 资质证书');
+    const labels = screen.getAllByText('缺失');
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) {
+      expect(label).toHaveClass('whitespace-nowrap');
+      expect(label.parentElement?.tagName).toBe('P');
+      expect(label.parentElement).toHaveTextContent('暂无该分类资料');
+    }
+  });
+
   test('upload form posts metadata to backend and refreshes', async () => {
     render(<MaterialsLibrary materials={[]} matched={[]} />);
     await screen.findByText('CMA 资质证书');

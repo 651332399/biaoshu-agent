@@ -39,6 +39,30 @@ describe('AppTopbar', () => {
     expect(screen.getByText('标书生成员')).toBeInTheDocument();
   });
 
+  // GUIX-471：jsdom 不做布局，这里守住窄屏（html.zy-compact，≤760px）的取舍；实际效果用 Chromium 100 在 360 宽度验收。
+  test('keeps the employee name on one line and drops logo and account name at 360 wide', async () => {
+    stubMe({ displayName: '演示账号 01', activeTenant: { name: '演示企业' } });
+    render(<AppTopbar />);
+    expect(screen.getByText('标书生成员')).toHaveClass('whitespace-nowrap');
+    expect(screen.getByRole('link', { name: '返回智员平台' })).toHaveClass('whitespace-nowrap');
+    expect(screen.getByAltText('智员')).toHaveClass('compact:hidden');
+    await screen.findByRole('button', { name: '账号：演示账号 01' });
+    expect(screen.getByText('演示账号 01')).toHaveClass('compact:hidden');
+  });
+
+  // GUIX-471 评审：姓名只在窄屏隐藏，宽屏上长姓名不限宽会把箭头挤出视口，且页面 scrollWidth 不变，整页宽度检查发现不了。
+  test.each([
+    ['display name', { displayName: '测试用户'.repeat(25) }, '测试用户'.repeat(25)],
+    ['email fallback', { email: `${'a'.repeat(90)}@guixucloud.cn` }, `${'a'.repeat(90)}@guixucloud.cn`],
+  ])('caps and truncates a long %s so the chevron stays visible', async (_, me, shown) => {
+    stubMe(me);
+    render(<AppTopbar />);
+    await screen.findByRole('button', { name: `账号：${shown}` });
+    const name = screen.getByText(shown);
+    expect(name).toHaveClass('truncate', 'max-w-40');
+    expect(name).toHaveAttribute('title', shown);
+  });
+
   describe('logout', () => {
     async function runLogout({ logoutStatus = 204, issueStatus = 200 } = {}) {
       const top = { location: { href: '/biaoshu/' } };
