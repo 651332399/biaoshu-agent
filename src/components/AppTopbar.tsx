@@ -97,7 +97,7 @@ export function AppTopbar() {
                 >
                   {account.displayName.slice(0, 1)}
                 </span>
-                <span className="whitespace-nowrap compact:hidden">{account.displayName}</span>
+                <span className="max-w-40 truncate compact:hidden" title={account.displayName}>{account.displayName}</span>
                 <ChevronDown size={14} aria-hidden="true" className="shrink-0 text-[var(--zy-muted)]" />
               </button>
             }

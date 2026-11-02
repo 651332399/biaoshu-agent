@@ -50,6 +50,19 @@ describe('AppTopbar', () => {
     expect(screen.getByText('演示账号 01')).toHaveClass('compact:hidden');
   });
 
+  // GUIX-471 评审：姓名只在窄屏隐藏，宽屏上长姓名不限宽会把箭头挤出视口，且页面 scrollWidth 不变，整页宽度检查发现不了。
+  test.each([
+    ['display name', { displayName: '测试用户'.repeat(25) }, '测试用户'.repeat(25)],
+    ['email fallback', { email: `${'a'.repeat(90)}@guixucloud.cn` }, `${'a'.repeat(90)}@guixucloud.cn`],
+  ])('caps and truncates a long %s so the chevron stays visible', async (_, me, shown) => {
+    stubMe(me);
+    render(<AppTopbar />);
+    await screen.findByRole('button', { name: `账号：${shown}` });
+    const name = screen.getByText(shown);
+    expect(name).toHaveClass('truncate', 'max-w-40');
+    expect(name).toHaveAttribute('title', shown);
+  });
+
   describe('logout', () => {
     async function runLogout({ logoutStatus = 204, issueStatus = 200 } = {}) {
       const top = { location: { href: '/biaoshu/' } };
