@@ -247,7 +247,7 @@ function ProposalCardView({
     stale: '已过期',
   };
   return (
-    <article className={`rounded-lg border p-3 ${proposal.status === 'stale' ? 'border-gray-200 bg-gray-50 opacity-70' : 'border-amber-200 bg-amber-50'}`}>
+    <article className={`rounded-lg border p-3 ${proposal.status === 'stale' ? 'border-gray-200 bg-gray-50' : 'border-amber-200 bg-amber-50'}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold text-gray-800">
           提案 {proposal.proposal_id} · {proposal.target_artifact}

@@ -568,7 +568,7 @@ function Metric({ label, value, tone }: { label: string; value: string; tone: 'p
     : 'border-red-100 bg-red-50 text-red-700';
   return (
     <div className={`rounded-lg border p-3 ${toneClass}`}>
-      <div className="text-[10px] font-semibold opacity-75">{label}</div>
+      <div className="text-[10px] font-semibold">{label}</div>
       <div className="mt-1 text-base font-bold">{value}</div>
     </div>
   );

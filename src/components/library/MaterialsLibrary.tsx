@@ -202,7 +202,7 @@ export function MaterialsLibrary({ materials }: Props) {
                             <button
                               onClick={() => handleDelete(m.id)}
                               aria-label={`删除 ${m.名称}`}
-                              className="ml-auto text-[11px] text-gray-300 hover:text-red-500 transition"
+                              className="ml-auto text-[11px] text-gray-400 hover:text-red-500 transition"
                             >
                               删除
                             </button>

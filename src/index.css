@@ -5,7 +5,7 @@
 
 /* ============================================================
    智能标书编写 Agent · 设计 token
-   --zy-* token 来自智员平台 zy-1.0.0.css（src/vendor/zy-ui/，main.tsx 先于本文件引入），本文件不写色值。
+   --zy-* token 来自智员平台 zy-4.0.0.css（src/vendor/zy-ui/，main.tsx 先于本文件引入），本文件不写色值。
    规范：平台仓库根 DESIGN.md「员工应用规范」。本项目走 Tailwind 4：下面的 @theme 把 Tailwind 调色板
    重映射到 --zy-*（中间阶用 color-mix 从 token 派生），现有 text-gray-700 / bg-blue-50 … 类无需改写即落到平台色。
    ============================================================ */
@@ -18,7 +18,7 @@
   --color-gray-100: var(--zy-line-soft);
   --color-gray-200: var(--zy-line);
   --color-gray-300: var(--zy-input);
-  --color-gray-400: var(--zy-muted-2);
+  --color-gray-400: var(--zy-muted);
   --color-gray-500: var(--zy-muted);
   --color-gray-600: var(--zy-text-2);
   --color-gray-700: color-mix(in srgb, var(--zy-text-2) 50%, var(--zy-text));
@@ -92,7 +92,7 @@
   --color-slate-100: var(--zy-line-soft);
   --color-slate-200: var(--zy-line);
   --color-slate-300: var(--zy-input);
-  --color-slate-400: var(--zy-muted-2);
+  --color-slate-400: var(--zy-muted);
   --color-slate-500: var(--zy-muted);
   --color-slate-600: var(--zy-text-2);
   --color-slate-700: color-mix(in srgb, var(--zy-text-2) 50%, var(--zy-text));
