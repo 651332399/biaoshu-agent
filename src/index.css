@@ -180,6 +180,11 @@ body {
   padding: 0;
 }
 
+@layer base {
+  /* Keep semantic links neutral so Tailwind utility colors win consistently. */
+  a { color: inherit; }
+}
+
 button {
   cursor: pointer;
   font-family: inherit;
