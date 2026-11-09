@@ -97,7 +97,7 @@ export function DocTree({ volumes, requirements = [], grownVolumes, focus, engin
                         {v.名称}
                       </p>
                       {v.单独密封 && (
-                        <span className="inline-block mt-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded uppercase tracking-wider scale-90 origin-left">
+                        <span className="inline-block mt-0.5 text-[9px] font-bold bg-[var(--zy-amber-bg)] text-[var(--zy-amber)] px-1.5 py-0.2 rounded uppercase tracking-wider scale-90 origin-left">
                           ★ 独立密封
                         </span>
                       )}

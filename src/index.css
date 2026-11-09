@@ -1,4 +1,10 @@
-@import "tailwindcss";
+/* Keep Tailwind's cascade explicit. Chromium 100 can hang on a stylesheet
+ * containing an empty components layer followed by media rules when the
+ * stylesheet is served from cache on a second navigation. This app has no
+ * component-layer rules, so import only the layers it uses. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 /* ============================================================
    智能标书编写 Agent · 设计 token
@@ -172,6 +178,11 @@ body {
   overflow: hidden;
   margin: 0;
   padding: 0;
+}
+
+@layer base {
+  /* Keep semantic links neutral so Tailwind utility colors win consistently. */
+  a { color: inherit; }
 }
 
 button {

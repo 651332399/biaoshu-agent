@@ -476,7 +476,7 @@ function ExportSummarySection({ state }: { state: EngineState }) {
         <a
           href={apiUrl(downloadUrl)}
           download
-          className="mt-3 block w-full text-center py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-opacity-90"
+          className="mt-3 block w-full text-center py-2 rounded-lg bg-[var(--accent)] text-white! text-xs font-semibold hover:bg-opacity-90"
         >
           🏆 {downloadLabel}
         </a>
