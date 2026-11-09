@@ -383,7 +383,7 @@ export function ExportDialog({ scenario, backendExportPlan, backendOutline }: Pr
               {status === 'accepted' && acceptance?.final_delivery_approved === true ? (
                 <a
                   href={apiUrl(`/api/projects/${projectId}/generations/${generationId}/delivery-bundle`)}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--accent)] !text-white px-3 py-2 font-semibold"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--accent)] text-white! px-3 py-2 font-semibold"
                 >
                   <PackageCheck className="h-4 w-4" />
                   下载最终交付包
