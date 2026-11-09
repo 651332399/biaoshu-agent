@@ -57,6 +57,50 @@ function makeTenderSpec() {
   };
 }
 
+function makeChatTurn(overrides: Partial<import('./types').ChatTurn> = {}): import('./types').ChatTurn {
+  return {
+    turn_id: 't-0001',
+    client_message_id: null,
+    role: 'assistant',
+    text: '已收到。',
+    intent: 'answer',
+    pipeline_state: 'idle',
+    context_fingerprint: 'ctx',
+    context_turn_ids: [],
+    context_stale: false,
+    citations: [],
+    proposal_id: null,
+    escalation_proposal: null,
+    material_ids: [],
+    created_by: 'system',
+    model_id: 'deepseek-v4-flash',
+    llm_response_digest: null,
+    ts: '2026-07-21T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function makeChatProposal(overrides: Partial<import('./types').ChatProposal> = {}): import('./types').ChatProposal {
+  return {
+    proposal_id: 'p-0001',
+    turn_id: 't-0002',
+    target_artifact: 'requirements',
+    checkpoint: 1,
+    base_fingerprint: 'base',
+    result_fingerprint: 'result',
+    patch: [{ op: 'replace', path: '/0/text', value: '新要求' }],
+    op_targets: [{ op_index: 0, kind: 'existing', entity_id: 'req-0001', parent_pointer: '' }],
+    diff: [{ op: 'replace', path: '/0/text', label: 'req-0001 · 文本', before: '旧要求', after: '新要求' }],
+    summary: '建议改写要求文本。',
+    status: 'proposed',
+    created_by: 'system',
+    created_at: '2026-07-21T00:00:00Z',
+    resolved_by: null,
+    resolved_at: null,
+    ...overrides,
+  };
+}
+
 describe('LiveSource', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -165,12 +209,13 @@ describe('LiveSource', () => {
       volumes: [{ ...tenderSpec.export_plan.volumes[0], file_name: '编辑后响应文件.docx' }],
     };
 
-    await source.confirmCheckpoint(editedExportPlan);
+    await source.confirmCheckpoint(editedExportPlan, [], true);
 
     expect(posts.at(-1)).toEqual({
       checkpoint: 4,
       action: 'edit',
       edited_artifact: { ...tenderSpec, export_plan: editedExportPlan },
+      save_as_template: true,
     });
     expect(source.getState().backendTenderSpec?.export_plan).toEqual(editedExportPlan);
     expect(source.getState().backendExportPlan).toEqual(editedExportPlan);
@@ -236,6 +281,22 @@ describe('LiveSource', () => {
     expect(source.getState().status).toBe('paused');
     expect(source.getState().error).toContain('no key');
     expect(source.getState().logs.at(-1)?.text).toContain('RuntimeError');
+  });
+
+  test('a later node start clears a historical failure and progress stays current', async () => {
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    await source.handleEvent('run_failed', message({ node: 'generate', error_type: 'ValidationError', message: 'legacy id' }, '2'));
+    await source.handleEvent('node_started', message({ node: 'compliance', stage_index: 8 }, '3'));
+    await source.handleEvent('node_progress', message({ node: 'compliance', message: '合规校验 1/34 批', pct: 71 }, '4'));
+    await source.handleEvent('node_progress', message({ node: 'compliance', message: '合规校验 2/34 批', pct: 72 }, '5'));
+
+    expect(source.getState().error).toBeNull();
+    expect(source.getState().status).toBe('playing');
+    expect(source.getState().activeStage).toBe(8);
+    expect(source.getState().logs.some((log) => log.text.includes('legacy id'))).toBe(false);
+    expect(source.getState().logs.filter((log) => log.text.includes('合规校验'))).toEqual([
+      expect.objectContaining({ text: '合规校验 2/34 批' }),
+    ]);
   });
 
   test('restoreProject rebuilds awaiting checkpoint from state and artifacts', async () => {
@@ -308,7 +369,7 @@ describe('LiveSource', () => {
           artifacts: ['draft/section-10.json', 'draft/section-2.json'],
         }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
-      requestedDrafts.push(url);
+      if (url.includes('/artifacts/draft/')) requestedDrafts.push(url);
       return new Response(JSON.stringify({
         section_id: url.includes('section-2') ? 'section-2' : 'section-10',
         title: url, content: url, blocks: [], maps_to_requirement_ids: [],
@@ -468,5 +529,117 @@ describe('LiveSource', () => {
     expect(scenario.meta.项目名).toBe('北京口腔医院计量检测');
     expect(scenario.meta.采购人).toBe('北京口腔医院');
     expect(scenario.meta.限价).toBe(270000);
+  });
+
+  test('run_completed enters WPS acceptance without claiming final delivery', async () => {
+    const source = new LiveSource(
+      makeLiveScenario(),
+      () => ({ addEventListener() {}, close() {} }) as unknown as EventSource,
+    );
+
+    await source.handleEvent('run_completed', message({
+      generation_id: 'g1',
+      server_precheck_passed: true,
+      final_delivery_approved: false,
+      status: 'awaiting_wps_acceptance',
+    }, '20'));
+
+    expect(source.getState().pendingCard?.checkpointTitle).toBe('服务器预检已结束');
+    expect(source.getState().pendingCard?.checkpointBody).toContain('待 WPS');
+    expect(source.getState().pendingCard?.checkpointBody).not.toContain('全流程完成');
+  });
+
+  test('addCustomUserMessage posts chat with client id and reconciles returned turns/proposal', async () => {
+    const proposal = makeChatProposal();
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), body: init?.body ? JSON.parse(String(init.body)) : {} });
+      return new Response(JSON.stringify({
+        status: 'done',
+        user_turn: makeChatTurn({
+          turn_id: 't-0001',
+          client_message_id: calls[0].body.client_message_id as string,
+          role: 'user',
+          text: '请补充社保证明',
+          intent: null,
+        }),
+        assistant_turn: makeChatTurn({
+          turn_id: 't-0002',
+          role: 'assistant',
+          text: '建议补充社保证明。',
+          intent: 'proposal',
+          citations: ['req-0001'],
+          proposal_id: proposal.proposal_id,
+        }),
+        proposal,
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    (source as unknown as { projectId: string }).projectId = 'p1';
+
+    await source.addCustomUserMessage('请补充社保证明');
+
+    expect(calls[0].url).toBe('/api/projects/p1/chat');
+    expect(calls[0].body.text).toBe('请补充社保证明');
+    expect(calls[0].body.client_message_id).toEqual(expect.any(String));
+    expect(source.getState().chat.sending).toBe(false);
+    expect(source.getState().chat.messages.map((turn) => turn.turn_id)).toEqual(['t-0001', 't-0002']);
+    expect(source.getState().chat.proposals[0]).toEqual(proposal);
+  });
+
+  test('chat processing and interrupted states come from POST/GET reconciliation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ status: 'processing', turn_id: 't-0001' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (String(input).endsWith('/chat')) {
+        return new Response(JSON.stringify({ turns: [], tail_state: 'interrupted' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ project_id: 'p1', completed_nodes: [], current_node: null, awaiting_checkpoint: null, awaiting_escalation: null, artifacts: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    (source as unknown as { projectId: string }).projectId = 'p1';
+
+    await source.addCustomUserMessage('继续');
+    expect(source.getState().chat.tailState).toBe('processing');
+    expect(source.getState().chat.sending).toBe(true);
+
+    await source.restoreProject('p1');
+    expect(source.getState().chat.tailState).toBe('interrupted');
+    expect(source.getState().error).toContain('中断');
+  });
+
+  test('acceptProposal and rejectProposal call proposal resolution endpoints', async () => {
+    const accepted = makeChatProposal({ status: 'accepted', resolved_by: 'tester' });
+    const rejected = makeChatProposal({ proposal_id: 'p-0002', status: 'rejected', resolved_by: 'tester' });
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      urls.push(url);
+      return new Response(JSON.stringify({
+        status: url.endsWith('/accept') ? 'accepted' : 'rejected',
+        proposal: url.endsWith('/accept') ? accepted : rejected,
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }));
+    const source = new LiveSource(makeLiveScenario(), () => ({ addEventListener() {}, close() {} }) as unknown as EventSource);
+    (source as unknown as { projectId: string }).projectId = 'p1';
+
+    await source.acceptProposal('p-0001');
+    await source.rejectProposal('p-0002');
+
+    expect(urls).toEqual([
+      '/api/projects/p1/chat/proposals/p-0001/accept',
+      '/api/projects/p1/chat/proposals/p-0002/reject',
+    ]);
+    expect(source.getState().chat.proposals.map((item) => item.status)).toEqual(['accepted', 'rejected']);
   });
 });

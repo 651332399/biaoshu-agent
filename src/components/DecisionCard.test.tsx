@@ -125,6 +125,30 @@ describe('DecisionCard', () => {
       sections: [{ title: '删改后', maps_to_requirement_ids: [], asset_refs: [] }],
     });
   });
+
+  test('report artifact renders pending materials panel', () => {
+    const card: Step = { id: 'confirm-3', stage: 4, kind: 'checkpoint', duration: 0, checkpointTitle: '确认③' };
+    render(
+      <DecisionCard
+        card={card}
+        artifact={{
+          label: 'report.json',
+          value: {
+            coverage: { total: 1, responded: 1, missing: [], 废标风险项: [] },
+            deviations: [],
+            pending_materials: [
+              { section_title: '公司资质证明', maps_to_requirement_ids: ['req-1', 'req-2'] },
+            ],
+          },
+        }}
+        onConfirm={vi.fn()}
+        onChoose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('待补充素材清单 · 1 项')).toBeInTheDocument();
+    expect(screen.getByText('公司资质证明')).toBeInTheDocument();
+  });
 });
 
 describe('mergeDraftIntoRequirements', () => {

@@ -220,7 +220,13 @@ export function AgentStream({ state, engine, scenario }: Props) {
                 card={state.pendingCard}
                 requirements={state.pendingCard.id === 'confirm-1' ? state.backendRequirements : []}
                 artifact={checkpointArtifact}
-                onConfirm={(artifact, confirmedFields) => engine.confirmCheckpoint(artifact, confirmedFields)}
+                onConfirm={(artifact, confirmedFields, saveAsTemplate) => {
+                  if (saveAsTemplate) {
+                    engine.confirmCheckpoint(artifact, confirmedFields, true);
+                  } else {
+                    engine.confirmCheckpoint(artifact, confirmedFields);
+                  }
+                }}
                 onChoose={(i) => engine.chooseOption(i)}
               />
             )}

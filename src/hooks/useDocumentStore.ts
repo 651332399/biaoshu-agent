@@ -73,8 +73,8 @@ export function useDocumentStore(scenario: Scenario, state: EngineState): Docume
         dirty: [...dirtyBlocks],
         locked: [...lockedBlocks],
       }));
-      if (projectId && blocks.length > 0) {
-        void saveDocumentBlocks(projectId, blocks)
+      if (projectId && dirtyBlocks.size > 0 && blocks.length > 0) {
+        void saveDocumentBlocks(projectId, blocks, [...dirtyBlocks])
           .then(() => setSaveError(null))
           .catch((error: unknown) => {
             const message = error instanceof Error ? error.message : '正文保存失败';

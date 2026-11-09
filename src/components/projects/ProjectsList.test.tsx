@@ -4,7 +4,7 @@ import { ProjectsList, RecentProjectRow, type RecentProject } from './ProjectsLi
 
 const PROJECTS = [
   { id: 'p1', name: '真实项目一', status: 'active', completed_steps: 6, total_steps: 9, current_node: 'generate', updated_at: 3 },
-  { id: 'p2', name: '真实项目二', status: 'exported', completed_steps: 9, total_steps: 9, current_node: null, updated_at: 2 },
+  { id: 'p2', name: '真实项目二', status: 'accepted', completed_steps: 9, total_steps: 9, current_node: null, updated_at: 2 },
   { id: 'p3', name: '真实项目三', status: 'draft', completed_steps: 0, total_steps: 9, current_node: 'ingest', updated_at: 1 },
 ] as const;
 
@@ -28,7 +28,7 @@ describe('ProjectsList', () => {
     expect(screen.getByText('真实项目三')).toBeInTheDocument();
 
     expect(screen.getByText('进行中')).toBeInTheDocument();
-    expect(screen.getByText('已导出')).toBeInTheDocument();
+    expect(screen.getByText('已验收')).toBeInTheDocument();
     expect(screen.getByText('草稿')).toBeInTheDocument();
   });
 
@@ -53,12 +53,12 @@ describe('RecentProjectRow', () => {
   test('renders each status with its own badge style', () => {
     const projects: RecentProject[] = [
       { id: 'a', name: 'A', status: 'active', meta: 'x' },
-      { id: 'b', name: 'B', status: 'exported', meta: 'x' },
+      { id: 'b', name: 'B', status: 'accepted', meta: 'x' },
       { id: 'c', name: 'C', status: 'draft', meta: 'x' },
     ];
     for (const project of projects) {
       const { unmount } = render(<RecentProjectRow project={project} />);
-      const label = project.status === 'active' ? '进行中' : project.status === 'exported' ? '已导出' : '草稿';
+      const label = project.status === 'active' ? '进行中' : project.status === 'accepted' ? '已验收' : '草稿';
       expect(screen.getByText(label)).toBeInTheDocument();
       unmount();
     }

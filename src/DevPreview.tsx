@@ -6,6 +6,7 @@ import { kqyy } from './scenarios/kqyy';
 import type { EngineState } from './engine/ScenarioEngine';
 import type { WorkspaceEngine } from './engine/sources';
 import type { BackendRequirement, BackendReport, BackendExportPlan } from './engine/types';
+import { createEmptyChatState } from './engine/types';
 
 const REQS: BackendRequirement[] = [
   { id: 'req.price', type: '废标', text: '投标报价不得超过最高限价 ¥270,000', page: 12, mandatory: true, score_weight: 10 },
@@ -75,12 +76,80 @@ function baseState(): EngineState {
     serverPackageUrl: null,
     error: null,
     mode: 'live',
+    chat: createEmptyChatState(),
   };
 }
 
 function stateForPhase(p: string): EngineState {
   const s = baseState();
-  if (p === '2') {
+  if (p === 'chat') {
+    s.activeStage = 2;
+    s.status = 'awaiting';
+    s.chat = {
+      messages: [
+        {
+          turn_id: 't-0001',
+          client_message_id: '123e4567-e89b-42d3-a456-426614174000',
+          role: 'user',
+          text: '把技术服务方案的标题改得更贴合招标要求，并说明依据。',
+          intent: null,
+          pipeline_state: 'checkpoint:2',
+          context_fingerprint: 'preview-context',
+          context_turn_ids: [],
+          context_stale: false,
+          citations: [],
+          material_ids: ['mat.tpl-plan'],
+          created_by: 'preview@example.com',
+          ts: '2026-07-21T08:00:00+00:00',
+        },
+        {
+          turn_id: 't-0002',
+          client_message_id: '123e4567-e89b-42d3-a456-426614174000',
+          role: 'assistant',
+          text: '建议将标题调整为“计量检测服务实施方案与质量保障”，覆盖服务实施与质量控制两类评分点。',
+          intent: 'proposal',
+          pipeline_state: 'checkpoint:2',
+          context_fingerprint: 'preview-context',
+          context_turn_ids: [],
+          context_stale: true,
+          citations: ['req.plan', '/sections/0/title'],
+          proposal_id: 'p-0001',
+          material_ids: ['mat.tpl-plan'],
+          created_by: 'copilot',
+          model_id: 'deepseek-v4-flash',
+          ts: '2026-07-21T08:00:02+00:00',
+        },
+      ],
+      proposals: [
+        {
+          proposal_id: 'p-0001',
+          turn_id: 't-0002',
+          target_artifact: 'outline',
+          checkpoint: 2,
+          base_fingerprint: 'base-preview',
+          result_fingerprint: 'result-preview',
+          patch: [{ op: 'replace', path: '/sections/0/title', value: '计量检测服务实施方案与质量保障' }],
+          op_targets: [{ op_index: 0, kind: 'existing', entity_id: 'sec-001', parent_pointer: '/sections' }],
+          diff: [{
+            op: 'replace',
+            path: '/sections/0/title',
+            label: 'sec-001 · title',
+            before: '技术服务方案',
+            after: '计量检测服务实施方案与质量保障',
+          }],
+          summary: '标题更贴合实施方案与质量保障评分点',
+          status: 'proposed',
+          created_by: 'preview@example.com',
+          created_at: '2026-07-21T08:00:02+00:00',
+          resolved_by: null,
+          resolved_at: null,
+        },
+      ],
+      sending: false,
+      tailState: 'interrupted',
+      pendingClientMessageId: null,
+    };
+  } else if (p === '2') {
     s.activeStage = 2;
     s.revealedBlocks = [];
     s.grownVolumes = [];

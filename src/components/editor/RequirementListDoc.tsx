@@ -64,8 +64,20 @@ export function RequirementListDoc({ requirements, progressMessage }: Props) {
                       }`}
                     >
                       {r.mandatory && <span className="text-[var(--bad)] font-bold shrink-0">★</span>}
-                      <span className="flex-1 text-gray-800">{r.text}</span>
+                      <span className="flex-1 text-gray-800">
+                        {r.summary ? (
+                          <details>
+                            <summary className="cursor-pointer marker:text-gray-400">{r.summary}</summary>
+                            <p className="mt-1.5 text-[12px] leading-relaxed text-gray-500">{r.text}</p>
+                          </details>
+                        ) : (
+                          r.text
+                        )}
+                      </span>
                       <span className="shrink-0 flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                        {r.needs_manual_screenshot && (
+                          <span title="需人工查询官网截图留证">📷 需截图留证</span>
+                        )}
                         {r.page != null && <span>第 {r.page} 页</span>}
                         {r.score_weight != null && (
                           <span className="font-semibold text-emerald-600">{r.score_weight} 分</span>

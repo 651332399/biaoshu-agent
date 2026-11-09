@@ -3,6 +3,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { AgentStream } from './AgentStream';
 import { kqyy } from '../scenarios/kqyy';
 import type { EngineState } from '../engine/ScenarioEngine';
+import { createEmptyChatState } from '../engine/types';
 
 describe('AgentStream', () => {
   const dummyState: EngineState = {
@@ -19,6 +20,17 @@ describe('AgentStream', () => {
     focus: null,
     pendingCard: null,
     redlineOverrides: {},
+    backendRequirements: [],
+    backendTenderSpec: null,
+    backendExportPlan: null,
+    backendOutline: null,
+    backendCoverage: null,
+    backendReport: null,
+    serverDocxUrl: null,
+    serverPackageUrl: null,
+    error: null,
+    mode: 'demo',
+    chat: createEmptyChatState(),
   };
 
   test('renders list of logs from state', () => {

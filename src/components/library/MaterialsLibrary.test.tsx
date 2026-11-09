@@ -33,7 +33,7 @@ describe('MaterialsLibrary (backend-connected)', () => {
     render(<MaterialsLibrary materials={[]} matched={[]} />);
     expect(await screen.findByText('CMA 资质证书')).toBeInTheDocument();
     expect(screen.getByText('某三甲医院计量业绩')).toBeInTheDocument();
-    expect(screen.getByText('📎 含文件')).toBeInTheDocument(); // file_path 素材显示附件标记
+    expect(screen.getByText('含文件')).toBeInTheDocument(); // file_path 素材显示附件标记
     expect(listMaterials).toHaveBeenCalled();
   });
 
@@ -48,6 +48,7 @@ describe('MaterialsLibrary (backend-connected)', () => {
     const [meta] = vi.mocked(uploadMaterial).mock.calls[0];
     expect(meta.name).toBe('新增人员简历');
     expect(meta.keywords).toEqual(['工程师', '计量']);
+    expect(meta).not.toHaveProperty('id');
   });
 
   test('upload rejects empty name without calling backend', async () => {

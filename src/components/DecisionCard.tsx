@@ -7,7 +7,11 @@ interface Props {
   card: Step;
   requirements?: BackendRequirement[];
   artifact?: { label: string; value: unknown };
-  onConfirm: (artifact?: unknown, confirmedFields?: ('项目名' | '项目编号' | '采购人')[]) => void;
+  onConfirm: (
+    artifact?: unknown,
+    confirmedFields?: ('项目编号' | '采购人')[],
+    saveAsTemplate?: boolean,
+  ) => void;
   onChoose: (index: number) => void;
 }
 
@@ -36,9 +40,10 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
-  const [manualMeta, setManualMeta] = useState<Partial<Record<'项目名' | '项目编号' | '采购人', string>>>({});
-  const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目名' | '项目编号' | '采购人', boolean>>>({});
+  const [manualMeta, setManualMeta] = useState<Partial<Record<'项目编号' | '采购人', string>>>({});
+  const [manualConfirmed, setManualConfirmed] = useState<Partial<Record<'项目编号' | '采购人', boolean>>>({});
   const [candidateDecisions, setCandidateDecisions] = useState<Record<string, 'required' | 'excluded'>>({});
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const grouped = useMemo(() => {
     const order = ['废标', '资质', '评分', '技术参数', '商务条款', '格式'];
     return order
@@ -61,7 +66,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const tenderSpec = isTenderSpecArtifact(artifact?.value) ? artifact.value : null;
   const exportPlan = tenderSpec?.export_plan ?? (isExportPlanArtifact(artifact?.value) ? artifact.value : null);
   const unverifiedMetaFields = tenderSpec
-    ? (['项目名', '项目编号', '采购人'] as const).filter((field) => !tenderSpec.project_meta.evidence_by_field?.[field]?.length)
+    ? (['项目编号', '采购人'] as const).filter((field) => !tenderSpec.project_meta.evidence_by_field?.[field]?.length)
     : [];
   const requiredFormKeys = new Set(
     tenderSpec?.export_plan.volumes.flatMap((volume) =>
@@ -79,6 +84,7 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
   const registryForms = tenderSpec?.forms.filter((form) => form.source_kind === 'registry') ?? [];
   const negativeDeviations = report?.deviations.filter((item) => item.deviation === '负偏离') ?? [];
   const warnDeviations = report?.deviations.filter((item) => item.deviation !== '无偏离') ?? [];
+  const pendingMaterials = report?.pending_materials ?? [];
 
   const confirmWithDraft = () => {
     if (tenderSpec) {
@@ -159,10 +165,12 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
         }
         projectMeta[field] = value;
       }
-      onConfirm(
-        { ...editedTenderSpec, project_meta: projectMeta },
-        unverifiedMetaFields,
-      );
+      const confirmedArtifact = { ...editedTenderSpec, project_meta: projectMeta };
+      if (saveAsTemplate) {
+        onConfirm(confirmedArtifact, unverifiedMetaFields, true);
+      } else {
+        onConfirm(confirmedArtifact, unverifiedMetaFields);
+      }
       return;
     }
     if (artifact) {
@@ -326,6 +334,25 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
                   另有 {warnDeviations.length} 条非“无偏离”记录。这里优先展示会影响放行的漏项、废标风险和负偏离。
                 </div>
               )}
+
+              {pendingMaterials.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[11px] font-semibold text-gray-700">
+                    待补充素材清单 · {pendingMaterials.length} 项
+                  </div>
+                  <div className="max-h-56 overflow-auto rounded-lg border border-amber-100 bg-white p-3 text-xs text-gray-700 space-y-2">
+                    {pendingMaterials.slice(0, 8).map((item, index) => (
+                      <div key={`pending-material-${item.section_title}-${index}`}>
+                        <ReviewRow
+                          tone="warn"
+                          title={item.section_title}
+                          body={`关联 ${item.maps_to_requirement_ids.length} 条要求，尚未匹配到素材库中的证明材料。`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -408,6 +435,15 @@ export function DecisionCard({ card, requirements = [], artifact, onConfirm, onC
                   ))}
                 </div>
               )}
+              <label className="flex items-start gap-2 rounded-md border border-blue-100 bg-blue-50 p-2 text-[11px] text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={saveAsTemplate}
+                  onChange={(event) => setSaveAsTemplate(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>保存为结构模板（仅保存分册、样式和表单结构，不保存项目名称、编号或采购人）</span>
+              </label>
             </div>
           )}
 

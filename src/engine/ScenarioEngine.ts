@@ -1,4 +1,5 @@
-import type { BackendCoverageReport, BackendExportPlan, BackendOutline, BackendReport, BackendRequirement, BackendTenderSpec } from './types';
+import type { BackendCoverageReport, BackendExportPlan, BackendOutline, BackendReport, BackendRequirement, BackendTenderSpec, ChatState } from './types';
+import { createEmptyChatState } from './types';
 import type { Focus, Scenario, Step, StepKind } from './demo/types';
 import { type Scheduler, realScheduler } from './scheduler';
 
@@ -28,6 +29,7 @@ export interface EngineState {
   serverPackageUrl: string | null;
   error: string | null;
   mode: 'demo' | 'live';
+  chat: ChatState;
 }
 
 export function blocking(kind: StepKind): boolean {
@@ -59,6 +61,7 @@ function initialState(): EngineState {
     serverPackageUrl: null,
     error: null,
     mode: 'demo',
+    chat: createEmptyChatState(),
   };
 }
 
@@ -332,7 +335,11 @@ export class ScenarioEngine {
     }, (fired?.duration ?? 0) / this.state.speed);
   }
 
-  confirmCheckpoint(_requirements?: unknown) {
+  confirmCheckpoint(
+    _requirements?: unknown,
+    _confirmedFields?: ('项目名' | '项目编号' | '采购人')[],
+    _saveAsTemplate?: boolean,
+  ) {
     if (this.state.status !== 'awaiting') return;
     const card = this.state.pendingCard;
     if (!card || (card.kind !== 'checkpoint' && card.kind !== 'export')) return;

@@ -58,4 +58,32 @@ describe('RequirementListDoc', () => {
     render(<RequirementListDoc requirements={requirements} />);
     expect(screen.getByText((_, element) => element?.tagName === 'P' && /共 2 项/.test(element.textContent ?? ''))).toBeInTheDocument();
   });
+
+  test('renders collapsed summary with original text folded, no summary falls back to full text', () => {
+    const requirements = [
+      req({
+        id: 'req-0001',
+        type: '废标',
+        mandatory: true,
+        text: '这是一句很长的原文，用来在没有摘要时确认前端仍然整段展示',
+        summary: '一句话摘要',
+      }),
+      req({ id: 'req-0002', type: '资质', text: '没有摘要的短要求' }),
+    ];
+    render(<RequirementListDoc requirements={requirements} />);
+
+    expect(screen.getByText('一句话摘要')).toBeInTheDocument();
+    expect(screen.getByText('这是一句很长的原文，用来在没有摘要时确认前端仍然整段展示')).toBeInTheDocument();
+    expect(screen.getByText('没有摘要的短要求')).toBeInTheDocument();
+  });
+
+  test('shows screenshot badge when needs_manual_screenshot is true', () => {
+    const requirements = [
+      req({ id: 'req-0001', type: '废标', needs_manual_screenshot: true }),
+      req({ id: 'req-0002', type: '资质', needs_manual_screenshot: false }),
+    ];
+    render(<RequirementListDoc requirements={requirements} />);
+
+    expect(screen.getAllByText('📷 需截图留证')).toHaveLength(1);
+  });
 });
