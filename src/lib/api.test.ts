@@ -32,6 +32,17 @@ describe('api client', () => {
     await expect(getArtifact('/x')).rejects.toMatchObject(new ApiError('bad upload', 400));
   });
 
+  test('does not render an upstream HTML error page', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '<html><body>nginx 500</body></html>',
+      { status: 500, headers: { 'content-type': 'text/html' } },
+    )));
+
+    await expect(getArtifact('/x')).rejects.toMatchObject(
+      new ApiError('请求失败（500）', 500),
+    );
+  });
+
   test('renders structured backend validation errors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       detail: [{ code: 'critical_meta_unconfirmed', message: 'critical metadata unconfirmed: 采购人' }],

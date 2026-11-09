@@ -30,8 +30,8 @@ async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const detail = typeof body === 'object' && body && 'detail' in body
       ? formatErrorDetail(body.detail)
-      : String(body);
-    throw new ApiError(detail || response.statusText, response.status);
+      : isJson ? String(body) : response.statusText || `请求失败（${response.status}）`;
+    throw new ApiError(detail || response.statusText || `请求失败（${response.status}）`, response.status);
   }
   return body as T;
 }
